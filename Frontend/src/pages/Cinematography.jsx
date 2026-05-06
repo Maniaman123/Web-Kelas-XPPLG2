@@ -22,7 +22,7 @@ export default function Cinematography() {
   const [showForm, setShowForm]   = useState(false);
   const [title, setTitle]         = useState('');
   const [type, setType]           = useState('photo');
-  const [fileData, setFileData]   = useState(null);   // Base64 for photo
+  const [photos, setPhotos]       = useState([]);     // Array of Base64 for photo
   const [videoUrl, setVideoUrl]   = useState('');     // URL for video
   const [fileError, setFileError] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -30,22 +30,42 @@ export default function Cinematography() {
 
   const handleFileChange = (e) => {
     setFileError('');
-    const file = e.target.files[0];
-    if (!file) return;
-    if (file.size > MAX_FILE_MB * 1024 * 1024) {
-      setFileError(`Ukuran file maksimal ${MAX_FILE_MB}MB.`);
-      e.target.value = '';
-      return;
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+    
+    let hasError = false;
+    const validFiles = [];
+    files.forEach(file => {
+      if (file.size > MAX_FILE_MB * 1024 * 1024) {
+        hasError = true;
+      } else {
+        validFiles.push(file);
+      }
+    });
+
+    if (hasError) {
+      setFileError(`Beberapa file diabaikan karena lebih dari ${MAX_FILE_MB}MB.`);
     }
-    const reader = new FileReader();
-    reader.onload = (ev) => setFileData(ev.target.result);
-    reader.readAsDataURL(file);
+
+    validFiles.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setPhotos(prev => [...prev, ev.target.result]);
+      };
+      reader.readAsDataURL(file);
+    });
+    
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removePhoto = (index) => {
+    setPhotos(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!title) return;
-    if (type === 'photo' && !fileData) { setFileError('Pilih file foto terlebih dahulu.'); return; }
+    if (type === 'photo' && photos.length === 0) { setFileError('Pilih file foto terlebih dahulu.'); return; }
     if (type === 'video' && !videoUrl)  { setFileError('Masukkan URL video.'); return; }
 
     const data = {
@@ -53,14 +73,15 @@ export default function Cinematography() {
       studentName: user.name,
       title,
       type,
-      url: type === 'photo' ? fileData : videoUrl,
+      url: type === 'photo' ? photos[0] : videoUrl, // fallback for legacy compatibility
+      photos: type === 'photo' ? photos : undefined,
     };
 
     const newPending = storage.submitPending('cinematography', user.id, user.name, data);
     setPending(prev => [...prev, newPending]);
     setSubmitted(true);
     setShowForm(false);
-    setTitle(''); setFileData(null); setVideoUrl(''); setFileError('');
+    setTitle(''); setPhotos([]); setVideoUrl(''); setFileError('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -118,7 +139,7 @@ export default function Cinematography() {
 
             <div>
               <label className="block text-sm font-medium text-inverted mb-1">Jenis Media</label>
-              <select value={type} onChange={(e) => { setType(e.target.value); setFileData(null); setVideoUrl(''); setFileError(''); }}
+              <select value={type} onChange={(e) => { setType(e.target.value); setPhotos([]); setVideoUrl(''); setFileError(''); }}
                 className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary outline-none">
                 <option value="photo">Foto</option>
                 <option value="video">Video (URL YouTube)</option>
@@ -128,19 +149,24 @@ export default function Cinematography() {
             {type === 'photo' ? (
               <div>
                 <label className="block text-sm font-medium text-inverted mb-1">
-                  Upload Foto <span className="text-outlined font-normal">(maks. {MAX_FILE_MB}MB)</span>
+                  Upload Foto <span className="text-outlined font-normal">(tiap foto maks. {MAX_FILE_MB}MB)</span>
                 </label>
-                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-black/15 rounded-xl cursor-pointer hover:bg-black/5 transition-colors">
-                  {fileData ? (
-                    <img src={fileData} className="h-full w-full object-contain rounded-xl" alt="preview" />
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 text-outlined">
-                      <Upload className="w-6 h-6" />
-                      <span className="text-sm">Klik untuk pilih foto</span>
+                <div className="flex flex-wrap gap-3 mb-1">
+                  {photos.map((photo, i) => (
+                    <div key={i} className="relative w-24 h-24 rounded-xl border border-black/10 overflow-hidden shrink-0 group">
+                      <img src={photo} alt="preview" className="w-full h-full object-cover" />
+                      <button type="button" onClick={() => removePhoto(i)} 
+                        className="absolute top-1 right-1 bg-black/50 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-500">
+                        <X className="w-3 h-3" />
+                      </button>
                     </div>
-                  )}
-                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-                </label>
+                  ))}
+                  <label className="flex flex-col items-center justify-center w-24 h-24 border-2 border-dashed border-black/15 rounded-xl cursor-pointer hover:bg-black/5 transition-colors shrink-0">
+                    <Upload className="w-6 h-6 text-outlined" />
+                    <span className="text-[10px] text-outlined mt-1">Tambah Foto</span>
+                    <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
+                  </label>
+                </div>
                 {fileError && <p className="text-xs text-red-500 mt-1">{fileError}</p>}
               </div>
             ) : (
@@ -175,17 +201,24 @@ export default function Cinematography() {
           <h3 className="text-sm font-semibold text-outlined mb-3">Karyamu (Menunggu Persetujuan)</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {myPendingItems.map(p => (
-              <div key={p.id} className="relative rounded-3xl overflow-hidden aspect-video bg-black/5 border-2 border-dashed border-amber-300">
-                {p.data.type === 'photo' && p.data.url
-                  ? <img src={p.data.url} alt={p.data.title} className="w-full h-full object-cover opacity-60" />
-                  : <div className="w-full h-full flex items-center justify-center bg-black/20"><Play className="w-10 h-10 text-white/40" /></div>
-                }
-                <div className="absolute inset-x-0 bottom-0 p-3 bg-linear-to-t from-black/80 to-transparent">
-                  <p className="text-white text-sm font-semibold truncate">{p.data.title}</p>
+              <div key={p.id} className="bg-amber-50 border-2 border-dashed border-amber-300 p-6 rounded-3xl flex flex-col">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <h3 className="text-base font-bold text-inverted">{p.data.title}</h3>
+                  <span className="text-[10px] bg-amber-400 text-amber-900 font-bold px-2 py-0.5 rounded-full shrink-0">⏳ Pending</span>
                 </div>
-                <span className="absolute top-2 right-2 bg-amber-400 text-amber-900 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                  ⏳ Pending
-                </span>
+                {p.data.type === 'photo' && p.data.photos && p.data.photos.length > 0 ? (
+                  <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide">
+                    {p.data.photos.map((ph, idx) => (
+                      <img key={idx} src={ph} alt="Dokumentasi" className="w-32 h-24 object-cover rounded-xl shrink-0 border border-black/5" />
+                    ))}
+                  </div>
+                ) : p.data.type === 'photo' && p.data.url ? (
+                  <img src={p.data.url} alt="Dokumentasi" className="w-full h-32 object-cover rounded-xl mb-3 border border-black/5" />
+                ) : (
+                  <div className="w-full h-32 flex items-center justify-center bg-black/10 rounded-xl mb-3">
+                    <Play className="w-8 h-8 text-black/40" />
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -200,18 +233,26 @@ export default function Cinematography() {
           </div>
         ) : (
           media.map((item) => (
-            <div key={item.id} className="group relative rounded-3xl overflow-hidden aspect-video bg-black/5 border border-black/5">
+            <div key={item.id} className="bg-white p-6 rounded-3xl shadow-sm border border-black/5 flex flex-col">
+              <h3 className="text-lg font-bold text-inverted mb-2">{item.title}</h3>
               {item.type === 'photo' ? (
-                <img src={item.url} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                item.photos && item.photos.length > 0 ? (
+                  <div className="flex overflow-x-auto gap-2 mb-3 pb-2 scrollbar-hide">
+                    {item.photos.map((ph, idx) => (
+                      <img key={idx} src={ph} alt="Dokumentasi" className="w-40 h-28 object-cover rounded-xl shrink-0 border border-black/5" />
+                    ))}
+                  </div>
+                ) : (
+                  <img src={item.url} alt="Dokumentasi" className="w-full h-40 object-cover rounded-xl mb-3 border border-black/5" />
+                )
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-black/80">
+                <div className="w-full h-40 flex items-center justify-center bg-black/80 rounded-xl mb-3 relative overflow-hidden">
                   <Play className="w-12 h-12 text-white/50" />
                   <a href={item.url} target="_blank" rel="noopener noreferrer" className="absolute inset-0 z-10" aria-label="Play video" />
                 </div>
               )}
-              <div className="absolute inset-x-0 bottom-0 p-4 bg-linear-to-t from-black/80 to-transparent">
-                <h3 className="text-white font-bold mb-1 truncate">{item.title}</h3>
-                <p className="text-white/70 text-xs">Oleh {item.studentName}</p>
+              <div className="pt-4 border-t border-black/5 flex items-center justify-between mt-auto">
+                <span className="text-xs font-medium text-primary bg-primary/5 px-2 py-1 rounded-md">Oleh {item.studentName}</span>
               </div>
             </div>
           ))

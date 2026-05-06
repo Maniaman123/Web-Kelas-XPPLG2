@@ -1,19 +1,15 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import useAuth from '../context/useAuth';
 import { storage } from '../utils/storage';
-import { Rocket, Plus, ExternalLink, Clock, X } from 'lucide-react';
+import { Rocket, Plus, ExternalLink, Clock, X, Upload } from 'lucide-react';
 
-const MAX_PROJECTS = 3;
+const MAX_FILE_MB = 2;
 
 export default function Projects() {
   const { user, isAuthenticated } = useAuth();
 
   const allApproved = storage.getProjects();
   const allPending  = storage.getPendingItems().filter(p => p.type === 'project');
-  const myApproved  = allApproved.filter(p => p.studentId === user?.id);
-  const myPending   = allPending.filter(p => p.studentId === user?.id);
-  const myTotal     = myApproved.length + myPending.length;
-  const canAdd      = isAuthenticated && user?.role === 'student' && myTotal < MAX_PROJECTS;
 
   const [projects, setProjects]       = useState(allApproved);
   const [pending, setPending]         = useState(allPending);
@@ -22,14 +18,53 @@ export default function Projects() {
   const [title, setTitle]             = useState('');
   const [description, setDescription] = useState('');
   const [link, setLink]               = useState('');
+  
+  const [photos, setPhotos]           = useState([]);
+  const [fileError, setFileError]     = useState('');
+  const fileInputRef                  = useRef(null);
+
+  const handleFileChange = (e) => {
+    setFileError('');
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+    
+    let hasError = false;
+    const validFiles = [];
+    files.forEach(file => {
+      if (file.size > MAX_FILE_MB * 1024 * 1024) {
+        hasError = true;
+      } else {
+        validFiles.push(file);
+      }
+    });
+
+    if (hasError) {
+      setFileError(`Beberapa file diabaikan karena lebih dari ${MAX_FILE_MB}MB.`);
+    }
+
+    validFiles.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setPhotos(prev => [...prev, ev.target.result]);
+      };
+      reader.readAsDataURL(file);
+    });
+    
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removePhoto = (index) => {
+    setPhotos(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handleAddProject = (e) => {
     e.preventDefault();
     if (!title || !description) return;
-    const data = { studentId: user.id, studentName: user.name, title, description, link };
+    const data = { studentId: user.id, studentName: user.name, title, description, link, photos };
     const newPending = storage.submitPending('project', user.id, user.name, data);
     setPending(prev => [...prev, newPending]);
-    setTitle(''); setDescription(''); setLink('');
+    setTitle(''); setDescription(''); setLink(''); setPhotos([]); setFileError('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
     setShowAddForm(false); setSubmitted(true);
   };
 
@@ -44,17 +79,10 @@ export default function Projects() {
         </div>
         {isAuthenticated && user?.role === 'student' && (
           <div className="flex flex-col items-end gap-1">
-            {canAdd ? (
-              <button onClick={() => setShowAddForm(!showAddForm)}
-                className="px-4 py-2 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-all flex items-center gap-2">
-                <Plus className="w-4 h-4" /> Tambah Proyek
-              </button>
-            ) : (
-              <span className="text-xs text-outlined bg-black/5 px-3 py-2 rounded-xl">
-                ✅ Batas proyek tercapai (maks. {MAX_PROJECTS})
-              </span>
-            )}
-            <span className="text-[10px] text-outlined">{myTotal}/{MAX_PROJECTS} proyek kamu</span>
+            <button onClick={() => setShowAddForm(!showAddForm)}
+              className="px-4 py-2 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-all flex items-center gap-2">
+              <Plus className="w-4 h-4" /> Tambah Proyek
+            </button>
           </div>
         )}
       </div>
@@ -86,6 +114,28 @@ export default function Projects() {
               <input type="url" value={link} onChange={(e) => setLink(e.target.value)}
                 placeholder="https://..." className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary outline-none" />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-inverted mb-1">
+                Foto Dokumentasi (Opsional) <span className="text-outlined font-normal">(tiap foto maks. {MAX_FILE_MB}MB)</span>
+              </label>
+              <div className="flex flex-wrap gap-3 mb-1">
+                {photos.map((photo, i) => (
+                  <div key={i} className="relative w-24 h-24 rounded-xl border border-black/10 overflow-hidden shrink-0 group">
+                    <img src={photo} alt="preview" className="w-full h-full object-cover" />
+                    <button type="button" onClick={() => removePhoto(i)} 
+                      className="absolute top-1 right-1 bg-black/50 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-500">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+                <label className="flex flex-col items-center justify-center w-24 h-24 border-2 border-dashed border-black/15 rounded-xl cursor-pointer hover:bg-black/5 transition-colors shrink-0">
+                  <Upload className="w-5 h-5 text-outlined" />
+                  <span className="text-[10px] text-outlined mt-1">Tambah Foto</span>
+                  <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
+                </label>
+              </div>
+              {fileError && <p className="text-xs text-red-500 mt-1">{fileError}</p>}
+            </div>
             <div className="flex justify-end gap-3 pt-2">
               <button type="button" onClick={() => setShowAddForm(false)}
                 className="px-4 py-2 rounded-xl border border-black/10 text-outlined font-medium hover:bg-black/5">Batal</button>
@@ -106,6 +156,13 @@ export default function Projects() {
                   <h3 className="text-base font-bold text-inverted">{p.data.title}</h3>
                   <span className="text-[10px] bg-amber-400 text-amber-900 font-bold px-2 py-0.5 rounded-full shrink-0">⏳ Pending</span>
                 </div>
+                {p.data.photos && p.data.photos.length > 0 && (
+                  <div className="flex overflow-x-auto gap-2 mb-3 pb-2 scrollbar-hide">
+                    {p.data.photos.map((ph, idx) => (
+                      <img key={idx} src={ph} alt="Dokumentasi" className="w-32 h-24 object-cover rounded-xl shrink-0 border border-black/5" />
+                    ))}
+                  </div>
+                )}
                 <p className="text-sm text-outlined flex-1">{p.data.description}</p>
               </div>
             ))}
@@ -122,6 +179,13 @@ export default function Projects() {
           projects.map((project) => (
             <div key={project.id} className="bg-white p-6 rounded-3xl shadow-sm border border-black/5 flex flex-col">
               <h3 className="text-lg font-bold text-inverted mb-2">{project.title}</h3>
+              {project.photos && project.photos.length > 0 && (
+                <div className="flex overflow-x-auto gap-2 mb-3 pb-2 scrollbar-hide">
+                  {project.photos.map((ph, idx) => (
+                    <img key={idx} src={ph} alt="Dokumentasi" className="w-32 h-24 object-cover rounded-xl shrink-0 border border-black/5" />
+                  ))}
+                </div>
+              )}
               <p className="text-sm text-outlined mb-4 flex-1">{project.description}</p>
               <div className="pt-4 border-t border-black/5 flex items-center justify-between">
                 <span className="text-xs font-medium text-primary bg-primary/5 px-2 py-1 rounded-md">Oleh {project.studentName}</span>

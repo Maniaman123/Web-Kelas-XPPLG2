@@ -234,6 +234,10 @@ export default function AdminDashboard() {
                         <img src={item.data.url} alt={item.data.title}
                           className="w-16 h-16 object-cover rounded-xl border border-black/5" />
                       )}
+                      {(item.type === 'project' || item.type === 'achievement') && item.data.photos && item.data.photos.length > 0 && (
+                        <img src={item.data.photos[0]} alt={item.data.title}
+                          className="w-16 h-16 object-cover rounded-xl border border-black/5" />
+                      )}
                     </div>
 
                     {/* Content */}
