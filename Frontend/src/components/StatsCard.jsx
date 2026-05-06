@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Users, FolderGit2, BookOpen, Trophy } from 'lucide-react';
 
 const stats = [
-  { icon: Users, label: 'Siswa', value: 36, suffix: '' },
+  { icon: Users, label: 'Pelajar', value: 36, suffix: '' },
   { icon: FolderGit2, label: 'Proyek Aktif', value: 10, suffix: '+' },
   { icon: BookOpen, label: 'Mata Pelajaran', value: 5, suffix: '' },
   { icon: Trophy, label: 'Prestasi', value: 3, suffix: '+' },

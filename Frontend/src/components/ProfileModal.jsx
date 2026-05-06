@@ -48,7 +48,7 @@ export default function ProfileModal({ isOpen, onClose, student }) {
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-inverted">Edit Profil</h2>
-                  <p className="text-sm text-outlined">Perbarui data siswa</p>
+                  <p className="text-sm text-outlined">Perbarui data pelajar</p>
                 </div>
               </div>
 

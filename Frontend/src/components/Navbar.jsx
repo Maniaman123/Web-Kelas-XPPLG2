@@ -7,7 +7,7 @@ import LoginModal from './LoginModal';
 
 const navLinks = [
   { label: 'Beranda', href: '/' },
-  { label: 'Siswa', href: '/#siswa' },
+  { label: 'Pelajar', href: '/#siswa' },
   { label: 'Proyek', href: '/projects' },
   { label: 'Prestasi', href: '/achievements' },
   { label: 'Sinematografi', href: '/cinematography' },

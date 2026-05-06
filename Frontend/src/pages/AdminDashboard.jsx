@@ -66,7 +66,7 @@ export default function AdminDashboard() {
   };
 
   const handleDelete = (userId, studentId) => {
-    if (!window.confirm('Yakin ingin menghapus siswa ini?')) return;
+    if (!window.confirm('Yakin ingin menghapus pelajar ini?')) return;
     
     const updatedUsers = users.filter(u => u.id !== userId);
     const updatedStudents = students.filter(s => s.id !== studentId);
@@ -92,7 +92,7 @@ export default function AdminDashboard() {
         <div className="bg-secondary rounded-3xl p-6 h-fit border border-secondary-dark/30">
           <h2 className="text-xl font-bold text-inverted mb-6 flex items-center gap-2">
             <UserPlus className="w-5 h-5 text-primary" />
-            Tambah Siswa Baru
+            Tambah Pelajar Baru
           </h2>
           
           <form onSubmit={handleAddStudent} className="space-y-4">
@@ -154,7 +154,7 @@ export default function AdminDashboard() {
 
         {/* List Card */}
         <div className="lg:col-span-2 bg-white rounded-3xl p-6 shadow-sm border border-black/5">
-          <h2 className="text-xl font-bold text-inverted mb-6">Daftar Siswa ({students.length})</h2>
+          <h2 className="text-xl font-bold text-inverted mb-6">Daftar Pelajar ({students.length})</h2>
           
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -181,7 +181,7 @@ export default function AdminDashboard() {
                         <button
                           onClick={() => handleDelete(student.userId, student.id)}
                           className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
-                          title="Hapus Siswa"
+                          title="Hapus Pelajar"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -191,7 +191,7 @@ export default function AdminDashboard() {
                 })}
                 {students.length === 0 && (
                   <tr>
-                    <td colSpan="4" className="py-8 text-center text-outlined">Belum ada data siswa.</td>
+                    <td colSpan="4" className="py-8 text-center text-outlined">Belum ada data pelajar.</td>
                   </tr>
                 )}
               </tbody>

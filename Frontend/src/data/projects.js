@@ -23,7 +23,7 @@ export const projects = [
     id: 3,
     name: 'Class Portfolio Web',
     description:
-      'Website portfolio kolektif kelas X PPLG 2 yang menampilkan karya-karya siswa dan informasi kelas.',
+      'Website portfolio kolektif kelas X PPLG 2 yang menampilkan karya-karya pelajar dan informasi kelas.',
     tech: ['React', 'Tailwind CSS', 'Vite'],
     status: 'Active',
     featured: false,

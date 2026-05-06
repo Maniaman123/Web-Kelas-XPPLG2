@@ -22,7 +22,7 @@ export default function Footer() {
           <div>
             <h4 className="text-sm font-semibold text-white mb-4">Navigasi</h4>
             <ul className="space-y-2.5">
-              {['Beranda', 'Siswa', 'Proyek', 'Jadwal'].map((link) => (
+              {['Beranda', 'Pelajar', 'Proyek', 'Jadwal'].map((link) => (
                 <li key={link}>
                   <a
                     href={`#${link.toLowerCase()}`}

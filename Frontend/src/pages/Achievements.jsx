@@ -41,7 +41,7 @@ export default function Achievements() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10">
         <div className="flex items-center gap-3">
           <Trophy className="w-8 h-8 text-primary" />
-          <h1 className="text-3xl font-bold text-inverted">Prestasi Siswa</h1>
+          <h1 className="text-3xl font-bold text-inverted">Prestasi Pelajar</h1>
         </div>
         
         {isAuthenticated && user?.role === 'student' && (

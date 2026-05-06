@@ -33,7 +33,7 @@ export default function BentoGrid() {
           Jelajahi Kelas Kami
         </h2>
         <p className="text-sm sm:text-base text-outlined max-w-2xl mx-auto">
-          Temukan informasi lengkap tentang siswa, proyek, jadwal, dan kegiatan kelas X PPLG 2.
+          Temukan informasi lengkap tentang pelajar, proyek, jadwal, dan kegiatan kelas X PPLG 2.
         </p>
       </div>
 
@@ -47,7 +47,7 @@ export default function BentoGrid() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div className="flex items-center gap-2">
               <Users className="w-5 h-5 text-primary" />
-              <h3 className="text-base sm:text-lg font-bold text-inverted">Direktori Siswa</h3>
+              <h3 className="text-base sm:text-lg font-bold text-inverted">Direktori Pelajar</h3>
               <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] sm:text-xs font-medium">
                 {students.length}
               </span>
@@ -97,7 +97,7 @@ export default function BentoGrid() {
             ))}
             {displayedStudents.length === 0 && (
               <div className="col-span-full py-10 text-center text-outlined">
-                Siswa tidak ditemukan.
+                Pelajar tidak ditemukan.
               </div>
             )}
           </div>

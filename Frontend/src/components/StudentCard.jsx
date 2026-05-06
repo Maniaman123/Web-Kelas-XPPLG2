@@ -41,7 +41,7 @@ export default function StudentCard({ student, currentUser }) {
           <p className="text-sm font-bold text-primary truncate">{student.name}</p>
           <div className="flex items-center gap-1.5 mt-0.5">
             <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-medium ${student.role?.color || 'bg-slate-100 text-slate-700'}`}>
-              {student.role?.label || 'Siswa'}
+              {student.role?.label || 'Pelajar'}
             </span>
             {student.gender && (
               <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-medium bg-white text-outlined border border-black/5">
