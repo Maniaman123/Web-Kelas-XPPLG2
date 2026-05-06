@@ -25,7 +25,20 @@ function initDB(seedStudents = []) {
         updated = true;
       }
     });
-    // Special case: if students are totally empty but we have seed data, populate it (optional, maybe admin handles this)
+
+    // Always sync the default admin account so credential changes take effect
+    const adminDefault = defaultData.users.find(u => u.role === 'admin');
+    if (adminDefault) {
+      const idx = currentData.users.findIndex(u => u.role === 'admin');
+      if (idx === -1) {
+        currentData.users.push(adminDefault);
+      } else {
+        currentData.users[idx] = { ...currentData.users[idx], ...adminDefault };
+      }
+      updated = true;
+    }
+
+    // Special case: if students are totally empty but we have seed data, populate it
     if (currentData.students.length === 0 && seedStudents.length > 0) {
       currentData.students = seedStudents;
       updated = true;

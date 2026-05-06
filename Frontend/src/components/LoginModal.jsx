@@ -84,14 +84,14 @@ export default function LoginModal({ isOpen, onClose }) {
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-inverted mb-1.5">Email</label>
+                  <label className="block text-sm font-medium text-inverted mb-1.5">Username / Email</label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-outlined" />
                     <input
-                      type="email"
+                      type="text"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="email@xpplg2.id"
+                      placeholder="username atau email"
                       required
                       className="w-full pl-10 pr-4 py-3 rounded-xl border border-black/10 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm transition-all"
                     />
@@ -126,8 +126,8 @@ export default function LoginModal({ isOpen, onClose }) {
               <div className="mt-6 p-4 rounded-xl bg-secondary/50 border border-secondary-dark/30">
                 <p className="text-xs font-semibold text-primary mb-2">🔑 Demo Credentials</p>
                 <div className="space-y-1 text-xs text-outlined">
-                  <p><span className="font-medium">Student:</span> student@xpplg2.id / student123</p>
-                  <p><span className="font-medium">Admin:</span> admin@xpplg2.id / admin123</p>
+                  <p><span className="font-medium">Admin:</span> admin@gmail.com / 123</p>
+                  <p className="text-[10px] text-outlined/60 mt-1">Pelajar: dibuat oleh Admin melalui Dashboard</p>
                 </div>
               </div>
             </div>
