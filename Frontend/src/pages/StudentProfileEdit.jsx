@@ -106,7 +106,7 @@ export default function StudentProfileEdit() {
                   type="text"
                   value={ig}
                   onChange={(e) => setIg(e.target.value)}
-                  placeholder="johndoe"
+                  placeholder="Username"
                   className="flex-1 px-4 py-2 rounded-r-xl border border-black/10 focus:border-primary outline-none"
                 />
               </div>
@@ -124,7 +124,7 @@ export default function StudentProfileEdit() {
                   type="text"
                   value={github}
                   onChange={(e) => setGithub(e.target.value)}
-                  placeholder="johndoe"
+                  placeholder="Username"
                   className="flex-1 px-4 py-2 rounded-r-xl border border-black/10 focus:border-primary outline-none"
                 />
               </div>
