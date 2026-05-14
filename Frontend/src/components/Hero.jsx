@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
-import { Sparkles, ArrowDown, Code, Gamepad2, Terminal } from 'lucide-react';
+import { Sparkles, ArrowDown } from 'lucide-react';
+import Prism from './Prism';
 
 export default function Hero() {
   return (
@@ -7,34 +8,22 @@ export default function Hero() {
       id="beranda"
       className="relative bg-primary overflow-hidden"
     >
-      {/* Background decorations */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-white/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-accent/10 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-white/2 rounded-full" />
-
-        {/* Floating code elements */}
-        <motion.div
-          animate={{ y: [0, -20, 0] }}
-          transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute top-32 right-[15%] text-white/10"
-        >
-          <Code className="w-16 h-16" />
-        </motion.div>
-        <motion.div
-          animate={{ y: [0, 15, 0] }}
-          transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-          className="absolute bottom-32 left-[10%] text-white/10"
-        >
-          <Gamepad2 className="w-12 h-12" />
-        </motion.div>
-        <motion.div
-          animate={{ y: [0, -10, 0], rotate: [0, 5, 0] }}
-          transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
-          className="absolute top-1/3 left-[20%] text-white/5"
-        >
-          <Terminal className="w-20 h-20" />
-        </motion.div>
+      {/* Prism WebGL background */}
+      <div className="absolute inset-0 pointer-events-none">
+        <Prism
+          animationType="rotate"
+          timeScale={0.5}
+          height={3.5}
+          baseWidth={5.5}
+          scale={3.6}
+          hueShift={0}
+          colorFrequency={1}
+          noise={0.5}
+          glow={1}
+          bloom={1.2}
+          transparent={true}
+          suspendWhenOffscreen={true}
+        />
       </div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 md:py-36 lg:py-44">
