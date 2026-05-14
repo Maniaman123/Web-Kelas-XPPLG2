@@ -78,12 +78,6 @@ export default function Hero() {
             >
               Jelajahi Kelas
             </a>
-            <a
-              href="#proyek"
-              className="w-full sm:w-auto px-8 py-3.5 sm:py-4 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold text-sm sm:text-base hover:bg-white/20 transition-all text-center"
-            >
-              Lihat Proyek
-            </a>
           </motion.div>
         </div>
 

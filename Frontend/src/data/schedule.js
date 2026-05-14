@@ -2,7 +2,7 @@ export const schedule = [
   {
     day: 'Senin',
     subjects: [
-      { time: '07:00 - 08:30', name: 'Pemrograman Web', teacher: 'Pak Andi' },
+      { time: '07:30 - 12:00', name: 'Pemrograman Web', teacher: 'Pak Ikiw' },
       { time: '08:30 - 10:00', name: 'Basis Data', teacher: 'Bu Sari' },
       { time: '10:15 - 11:45', name: 'Matematika', teacher: 'Pak Budi' },
       { time: '12:30 - 14:00', name: 'Bahasa Inggris', teacher: 'Bu Diana' },

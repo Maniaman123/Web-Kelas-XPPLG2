@@ -36,9 +36,9 @@ export default function StatsCard() {
 
   const stats = [
     { icon: Users,      label: 'Pelajar',        value: pelajarCount,  suffix: '' },
-    { icon: FolderGit2, label: 'Proyek Aktif',   value: proyekCount,   suffix: proyekCount > 0 ? '' : '+' },
+    { icon: FolderGit2, label: 'Proyek Aktif',   value: proyekCount,   suffix: '' },
     { icon: BookOpen,   label: 'Mata Pelajaran',  value: 5,             suffix: '' },
-    { icon: Trophy,     label: 'Prestasi',        value: prestasiCount, suffix: prestasiCount > 0 ? '' : '+' },
+    { icon: Trophy,     label: 'Prestasi',        value: prestasiCount, suffix: '' },
   ];
 
   return (

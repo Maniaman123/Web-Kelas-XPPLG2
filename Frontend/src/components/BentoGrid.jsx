@@ -59,7 +59,13 @@ export default function BentoGrid() {
         {/* ============================================ */}
         {/* 1. Student Directory Card (Wide — 2 cols, or 4 cols if expanded) */}
         {/* ============================================ */}
-        <BentoCard colSpan={2} className="xl:col-span-2" id="siswa" enableBorderGlow enableTilt>
+        <BentoCard
+          colSpan={2}
+          className="xl:col-span-2"
+          id="siswa"
+          enableBorderGlow
+          enableTilt
+        >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div className="flex items-center gap-2">
               <Users className="w-5 h-5 text-primary" />
@@ -93,7 +99,7 @@ export default function BentoGrid() {
                 </button>
               </div>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-outlined" />
+                <Search className="absolute left-3 top-1/2 -translate-y-2/2 w-3.5 h-4.5 text-outlined" />
                 <input
                   type="text"
                   placeholder="Cari nama/absen..."
@@ -149,14 +155,26 @@ export default function BentoGrid() {
         {/* ============================================ */}
         {/* 4. Project Showcase Card (Large — 2 cols) -> Links to /projects */}
         {/* ============================================ */}
-        <BentoCard colSpan={2} className="xl:col-span-2" id="proyek" enableBorderGlow enableTilt>
+        <BentoCard
+          colSpan={2}
+          className="xl:col-span-2"
+          id="proyek"
+          enableBorderGlow
+          enableTilt
+        >
           <ProjectShowcase />
         </BentoCard>
 
         {/* ============================================ */}
         {/* 5. Class Schedule Card (Medium) */}
         {/* ============================================ */}
-        <BentoCard colSpan={2} className="xl:col-span-2" id="jadwal" enableBorderGlow enableTilt>
+        <BentoCard
+          colSpan={2}
+          className="xl:col-span-2"
+          id="jadwal"
+          enableBorderGlow
+          enableTilt
+        >
           <ScheduleCard />
         </BentoCard>
       </div>

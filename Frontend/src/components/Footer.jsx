@@ -1,8 +1,8 @@
-import { Code2, Heart, Globe, ExternalLink } from 'lucide-react';
+import { Code2, Globe, ExternalLink } from 'lucide-react';
 
 export default function Footer() {
   return (
-    <footer className="bg-inverted text-white/60">
+    <footer className="bg-primary text-white/70">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10">
           {/* Brand */}
@@ -66,8 +66,8 @@ export default function Footer() {
             &copy; {new Date().getFullYear()} X PPLG 2 — SMK Negeri 1 Ciomas
           </p>
           <p className="flex items-center gap-1.5">
-            Dibuat dengan <Heart className="w-3.5 h-3.5 text-rose-400 fill-rose-400" /> oleh{' '}
-            <span className="font-medium text-white">Nama Pembuat</span>
+            Dibuat oleh{' '}
+            <span className="font-medium text-white">Reyhan_SR</span>
           </p>
         </div>
       </div>
