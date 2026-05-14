@@ -8,7 +8,7 @@ export default function Hero() {
       id="beranda"
       className="relative bg-primary overflow-hidden"
     >
-      {/* Prism WebGL background */}
+      {/* Prism WebGL background — adaptive quality based on device tier */}
       <div className="absolute inset-0 pointer-events-none">
         <Prism
           animationType="rotate"
@@ -22,7 +22,7 @@ export default function Hero() {
           glow={1}
           bloom={1.2}
           transparent={true}
-          suspendWhenOffscreen={true}
+          quality="auto"
         />
       </div>
 

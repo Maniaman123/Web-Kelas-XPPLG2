@@ -1,6 +1,27 @@
 import { useEffect, useRef } from 'react';
 import { Renderer, Triangle, Program, Mesh } from 'ogl';
 
+/**
+ * Detect device quality tier for adaptive rendering.
+ * Returns 'low' | 'medium' | 'high'
+ */
+function detectQuality() {
+  // Respect user's reduced-motion preference
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return 'low';
+  const cores = navigator.hardwareConcurrency || 2;
+  // Mobile heuristic: small screen + touch
+  const isMobile = window.matchMedia('(max-width: 768px)').matches || navigator.maxTouchPoints > 1;
+  if (isMobile || cores <= 2) return 'low';
+  if (cores <= 4) return 'medium';
+  return 'high';
+}
+
+const QUALITY_SETTINGS = {
+  low:    { steps: 35, dpr: 1.0 },
+  medium: { steps: 55, dpr: 1.0 },
+  high:   { steps: 70, dpr: 1.0 },  // DPR intentionally capped at 1 even on high-end
+};
+
 const Prism = ({
   height = 3.5,
   baseWidth = 5.5,
@@ -15,8 +36,9 @@ const Prism = ({
   hoverStrength = 2,
   inertia = 0.05,
   bloom = 1,
-  suspendWhenOffscreen = false,
-  timeScale = 0.5
+  suspendWhenOffscreen = true,   // default ON for perf
+  timeScale = 0.5,
+  quality = 'auto'               // 'auto' | 'low' | 'medium' | 'high'
 }) => {
   const containerRef = useRef(null);
 
@@ -43,7 +65,11 @@ const Prism = ({
     const HOVSTR = Math.max(0, hoverStrength || 1);
     const INERT = Math.max(0, Math.min(1, inertia || 0.12));
 
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    // --- Adaptive quality ---
+    const tier = quality === 'auto' ? detectQuality() : quality;
+    const { steps: STEPS, dpr: maxDpr } = QUALITY_SETTINGS[tier] ?? QUALITY_SETTINGS.medium;
+    const dpr = Math.min(maxDpr, window.devicePixelRatio || 1);
+
     const renderer = new Renderer({
       dpr,
       alpha: transparent,
@@ -70,6 +96,7 @@ const Prism = ({
       }
     `;
 
+    // STEPS is injected as a compile-time constant — GLSL ES 1.0 requires loop bounds to be constant
     const fragment = /* glsl */ `
       precision highp float;
 
@@ -157,7 +184,7 @@ const Prism = ({
           wob = mat2(c0, c1, c2, c0);
         }
 
-        const int STEPS = 100;
+        const int STEPS = ${STEPS};
         for (int i = 0; i < STEPS; i++) {
           p = vec3(f, z);
           p.xz = p.xz * wob;
@@ -272,6 +299,7 @@ const Prism = ({
     const t0 = performance.now();
     const startRAF = () => {
       if (raf) return;
+      if (document.hidden) return;   // don't render in background tabs
       raf = requestAnimationFrame(render);
     };
     const stopRAF = () => {
@@ -279,6 +307,9 @@ const Prism = ({
       cancelAnimationFrame(raf);
       raf = 0;
     };
+    // Pause when browser tab is hidden
+    const onVisChange = () => document.hidden ? stopRAF() : startRAF();
+    document.addEventListener('visibilitychange', onVisChange);
 
     const rnd = () => Math.random();
     const wX = (0.3 + rnd() * 0.6) * RSX;
@@ -394,6 +425,7 @@ const Prism = ({
     return () => {
       stopRAF();
       ro.disconnect();
+      document.removeEventListener('visibilitychange', onVisChange);
       if (animationType === 'hover') {
         if (onPointerMove) window.removeEventListener('pointermove', onPointerMove);
         window.removeEventListener('mouseleave', onLeave);
@@ -422,7 +454,8 @@ const Prism = ({
     hoverStrength,
     inertia,
     bloom,
-    suspendWhenOffscreen
+    suspendWhenOffscreen,
+    quality
   ]);
 
   return <div className="w-full h-full relative" ref={containerRef} />;
