@@ -148,7 +148,7 @@ export default function BentoCard({
       )}
 
       {/* Content above glow layers */}
-      <div className="relative z-[1]">{children}</div>
+      <div className="relative z-1">{children}</div>
     </motion.div>
   );
 }
