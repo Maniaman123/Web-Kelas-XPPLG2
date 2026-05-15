@@ -7,7 +7,7 @@ import LoginModal from './LoginModal';
 
 const navLinks = [
   { label: 'Home',           href: '/',               icon: Home        },
-  { label: 'Students',     href: '/#siswa',          icon: Users       },
+  { label: 'Students',       href: '/students',      icon: Users       },
   { label: 'Projects',       href: '/projects',        icon: FolderGit2  },
   { label: 'Achievements',   href: '/achievements',    icon: Trophy      },
   { label: 'Cinematography', href: '/cinematography',  icon: Camera      },

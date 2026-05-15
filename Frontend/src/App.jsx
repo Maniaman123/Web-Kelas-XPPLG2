@@ -10,6 +10,7 @@ import StudentProfileEdit from './pages/StudentProfileEdit';
 import Projects from './pages/Projects';
 import Cinematography from './pages/Cinematography';
 import Achievements from './pages/Achievements';
+import Students from './pages/Students';
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
               <Route path="/projects" element={<Projects />} />
               <Route path="/cinematography" element={<Cinematography />} />
               <Route path="/achievements" element={<Achievements />} />
+              <Route path="/students" element={<Students />} />
             </Routes>
           </div>
           <Footer />
