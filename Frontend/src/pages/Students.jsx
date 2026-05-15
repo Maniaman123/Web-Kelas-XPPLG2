@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Users, User, Code2 } from 'lucide-react';
+import { Search, Users, User, Code2, UserX, SearchX } from 'lucide-react';
 import { gsap } from 'gsap';
 import { storage } from '../utils/storage';
 import { getInitials } from '../data/students';
@@ -414,14 +414,52 @@ export default function Students() {
             ) : (
               <motion.div
                 key="empty"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="col-span-full py-20 text-center"
-                style={{ color: `${AZURE}60` }}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0  }}
+                exit={{ opacity: 0, y: -8   }}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
+                className="col-span-full py-24 flex flex-col items-center justify-center text-center gap-4"
               >
-                <Users className="w-12 h-12 mx-auto mb-3 opacity-40" />
-                <p className="text-sm font-medium">Tidak ada siswa ditemukan.</p>
+                {/* Icon */}
+                <div
+                  className="w-16 h-16 rounded-2xl flex items-center justify-center mb-1"
+                  style={{ background: 'rgba(220,238,250,0.10)' }}
+                >
+                  {query
+                    ? <SearchX className="w-8 h-8" style={{ color: `${AZURE}70` }} />
+                    : <UserX   className="w-8 h-8" style={{ color: `${AZURE}70` }} />
+                  }
+                </div>
+
+                {/* Headline */}
+                <p className="text-lg font-bold" style={{ color: AZURE }}>
+                  {genderFilter === 'P' && !query && 'Tidak ada siswi ditemukan'}
+                  {genderFilter === 'L' && !query && 'Tidak ada siswa laki-laki ditemukan'}
+                  {query && 'Pencarian tidak ditemukan'}
+                  {genderFilter === 'all' && !query && 'Belum ada pelajar'}
+                </p>
+
+                {/* Sub-text */}
+                <p className="text-sm max-w-xs" style={{ color: `${AZURE}60` }}>
+                  {query
+                    ? `Tidak ada hasil untuk "${query}". Coba kata kunci lain.`
+                    : genderFilter === 'P'
+                      ? 'Data siswi belum tersedia atau belum ditambahkan oleh admin.'
+                      : genderFilter === 'L'
+                        ? 'Data siswa laki-laki belum tersedia atau belum ditambahkan oleh admin.'
+                        : 'Data siswa belum ditambahkan.'}
+                </p>
+
+                {/* Reset hint */}
+                {(query || genderFilter !== 'all') && (
+                  <button
+                    onClick={() => { setQuery(''); setGenderFilter('all'); }}
+                    className="mt-2 text-xs font-semibold px-4 py-2 rounded-full transition-all hover:opacity-80"
+                    style={{ background: 'rgba(220,238,250,0.15)', color: AZURE, border: '1px solid rgba(220,238,250,0.2)' }}
+                  >
+                    Tampilkan semua pelajar →
+                  </button>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
