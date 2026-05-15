@@ -79,35 +79,37 @@ export default function Navbar() {
               </Link>
 
               {/* ── Desktop Nav ── */}
-              <nav className="hidden md:flex items-center gap-0.5" aria-label="Main navigation">
+              <nav className="hidden md:flex items-center gap-0.5 p-1 rounded-2xl" aria-label="Main navigation"
+                style={{ background: 'rgba(0,0,0,0.04)' }}>
                 {navLinks.map((link) => {
                   const active = isActive(link.href);
                   const Icon   = link.icon;
                   return (
-                    <motion.div
+                    <Link
                       key={link.href}
-                      whileHover={{ scale: 1.05 }}
-                      transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                      to={link.href}
+                      className="relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium transition-colors duration-150 select-none"
+                      style={{ color: active ? '#ffffff' : '#101828', zIndex: 0 }}
                     >
-                      <Link
-                        to={link.href}
-                        className={`
-                          flex items-center gap-1.5 px-3.5 py-2 rounded-xl
-                          text-sm font-medium transition-colors duration-200
-                          ${active
-                            ? 'text-white shadow-sm'
-                            : 'hover:bg-black/5'
-                          }
-                        `}
-                        style={active
-                          ? { background: '#243B3C', color: '#ffffff' }
-                          : { color: '#101828' }
-                        }
-                      >
-                        <Icon className="w-3.5 h-3.5 shrink-0" />
-                        {link.label}
-                      </Link>
-                    </motion.div>
+                      {/* Sliding pill — same layoutId across all items = smooth slide */}
+                      {active && (
+                        <motion.div
+                          layoutId="nav-pill"
+                          className="absolute inset-0 rounded-xl"
+                          style={{ background: '#243B3C', zIndex: -1 }}
+                          transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                        />
+                      )}
+                      {/* Hover tint for inactive items */}
+                      {!active && (
+                        <motion.span
+                          className="absolute inset-0 rounded-xl opacity-0 hover:opacity-100 transition-opacity duration-150"
+                          style={{ background: 'rgba(0,0,0,0.06)', zIndex: -1 }}
+                        />
+                      )}
+                      <Icon className="w-3.5 h-3.5 shrink-0 relative" />
+                      <span className="relative">{link.label}</span>
+                    </Link>
                   );
                 })}
               </nav>
