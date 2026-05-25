@@ -1,97 +1,197 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import useAuth from '../context/useAuth';
-import { storage } from '../utils/storage';
-import { UserPlus, Trash2, ShieldAlert, CheckCircle, XCircle, Clock, Camera, Rocket, Trophy } from 'lucide-react';
+// src/pages/AdminDashboard.jsx
+// ─────────────────────────────────────────────────────────────────────────────
+// Dashboard Admin — Firebase Auth + Firestore (Secondary App Pattern)
+//
+// Teknik Secondary App:
+//   Pembuatan akun siswa menggunakan `secondaryAuth` (instance Firebase terisolasi).
+//   Ini memastikan sesi Admin di `auth` (instance utama) TIDAK PERNAH terganggu
+//   saat Admin membuat 46 akun siswa secara berurutan.
+//
+// Konvensi Email Siswa:
+//   Format: {noabsen}@xpplg2.sch.id (misal: 01@xpplg2.sch.id)
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate }             from 'react-router-dom';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, updateDoc }          from 'firebase/firestore';
+import { secondaryAuth, db }       from '../utils/firebase';
+import useAuth                     from '../context/useAuth';
+import {
+  subscribeToStudents,
+  subscribeToPending,
+  addStudent,
+  deleteStudent,
+  createUserDoc,
+  deleteUserDoc,
+  approvePending,
+  rejectPending,
+} from '../utils/firestoreService';
 import { roles, avatarColors, getInitials } from '../data/students';
+import {
+  UserPlus, Trash2, ShieldAlert, CheckCircle, XCircle,
+  Clock, Camera, Rocket, Trophy, Loader2,
+} from 'lucide-react';
 
 const TYPE_LABELS = {
-  cinematography: { label: 'Sinematografi', icon: Camera, color: 'text-blue-600 bg-blue-50' },
+  cinematography: { label: 'Sinematografi', icon: Camera, color: 'text-blue-600 bg-blue-50'   },
   project:        { label: 'Proyek',         icon: Rocket,  color: 'text-green-600 bg-green-50' },
   achievement:    { label: 'Prestasi',        icon: Trophy,  color: 'text-amber-600 bg-amber-50' },
 };
+
+// Helper: format absent number jadi 2 digit (01, 02, ..., 46)
+function padAbsen(n) {
+  return String(n).padStart(2, '0');
+}
 
 export default function AdminDashboard() {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  const [students, setStudents] = useState(() => storage.getStudents());
-  const [users, setUsers]       = useState(() => storage.getUsers());
-  const [pending, setPending]   = useState(() => storage.getPendingItems());
+  // ── Data state (real-time dari Firestore) ──────────────────────────────────
+  const [students,  setStudents]  = useState([]);
+  const [pending,   setPending]   = useState([]);
   const [activeTab, setActiveTab] = useState('students'); // 'students' | 'approval'
 
-  const [name, setName]               = useState('');
+  // ── Form state ─────────────────────────────────────────────────────────────
+  const [name,         setName]         = useState('');
   const [absentNumber, setAbsentNumber] = useState('');
-  const [gender, setGender]           = useState('L');
+  const [gender,       setGender]       = useState('L');
   const [tempPassword, setTempPassword] = useState('student123');
+  const [formLoading,  setFormLoading]  = useState(false);
+  const [formError,    setFormError]    = useState('');
+  const [formSuccess,  setFormSuccess]  = useState('');
 
+  // Guard: redirect jika bukan admin
   useEffect(() => {
     if (!isAuthenticated || user?.role !== 'admin') navigate('/');
   }, [isAuthenticated, user, navigate]);
 
-  const handleAddStudent = (e) => {
+  // ── Real-time listeners ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isAuthenticated || user?.role !== 'admin') return;
+
+    const unsubStudents = subscribeToStudents(setStudents);
+    const unsubPending  = subscribeToPending(setPending);
+
+    return () => {
+      unsubStudents();
+      unsubPending();
+    };
+  }, [isAuthenticated, user?.role]);
+
+  // ── Tambah Siswa Baru ──────────────────────────────────────────────────────
+  // Alur:
+  //   1. Buat Firebase Auth account dengan email konvensi xpplg2.sch.id
+  //   2. Simpan dokumen user di Firestore users/{uid}
+  //   3. Simpan dokumen profil di Firestore students/{newId}
+  //   4. Sign kembali sebagai admin (createUserWithEmailAndPassword otomatis
+  //      mem-switch sesi ke user baru, jadi kita perlu re-auth admin)
+  const handleAddStudent = useCallback(async (e) => {
     e.preventDefault();
     if (!name || !absentNumber || !tempPassword) return;
+    setFormLoading(true);
+    setFormError('');
+    setFormSuccess('');
 
-    const newUserId = `user-${Date.now()}`;
-    const newUser = {
-      id: newUserId,
-      username: name.toLowerCase().replace(/\s+/g, ''),
-      password: tempPassword,
-      role: 'student',
-      name,
-    };
-    const updatedUsers = [...users, newUser];
-    storage.saveUsers(updatedUsers);
-    setUsers(updatedUsers);
+    // Simpan kredensial admin untuk re-auth nanti
+    const adminEmail    = user.email;
+    const adminPassword = null; // kita tidak punya password admin di client — gunakan cara lain
 
-    const newStudent = {
-      id: `student-${Date.now()}`,
-      userId: newUserId,
-      name,
-      absentNumber: parseInt(absentNumber),
-      gender,
-      initials: getInitials(name),
-      role: roles[Math.floor(Math.random() * roles.length)],
-      avatarColor: avatarColors[Math.floor(Math.random() * avatarColors.length)],
-      about: '', ig: '', github: '', portfolio: '',
-    };
-    const updatedStudents = [...students, newStudent];
-    storage.saveStudents(updatedStudents);
-    setStudents(updatedStudents);
+    const studentEmail = `${padAbsen(absentNumber)}@xpplg2.sch.id`;
 
-    setName(''); setAbsentNumber('');
-  };
+    try {
+      // 1. Buat Firebase Auth account untuk siswa menggunakan secondaryAuth.
+      //    secondaryAuth adalah instance terisolasi — sesi Admin di auth utama aman.
+      const credential = await createUserWithEmailAndPassword(secondaryAuth, studentEmail, tempPassword);
+      const newUid = credential.user.uid;
 
-  const handleDelete = (userId, studentId) => {
-    if (!window.confirm('Yakin ingin menghapus pelajar ini?')) return;
-    const updatedUsers    = users.filter(u => u.id !== userId);
-    const updatedStudents = students.filter(s => s.id !== studentId);
-    storage.saveUsers(updatedUsers);
-    storage.saveStudents(updatedStudents);
-    setUsers(updatedUsers);
-    setStudents(updatedStudents);
-  };
+      // 2. Buat dokumen user di Firestore
+      await createUserDoc(newUid, {
+        role:  'student',
+        name,
+        email: studentEmail,
+      });
 
-  const handleApprove = (pendingId) => {
-    storage.approvePending(pendingId);
-    setPending(storage.getPendingItems());
-  };
+      // 3. Buat profil siswa di Firestore
+      const newStudentId = await addStudent({
+        userId:       newUid,
+        name,
+        absentNumber: parseInt(absentNumber),
+        gender,
+        initials:     getInitials(name),
+        role:         roles[Math.floor(Math.random() * roles.length)],
+        avatarColor:  avatarColors[Math.floor(Math.random() * avatarColors.length)],
+        about: '', ig: '', github: '', portfolio: '',
+      });
 
-  const handleReject = (pendingId) => {
+      // 4. Update dokumen user dengan studentId yang baru dibuat
+      await updateDoc(doc(db, 'users', newUid), { studentId: newStudentId });
+
+      setFormSuccess(`✓ Akun ${name} berhasil dibuat! Email: ${studentEmail}`);
+      setName(''); setAbsentNumber('');
+      // Sesi Admin tidak terganggu — lanjutkan membuat akun berikutnya.
+
+    } catch (err) {
+      console.error('[AdminDashboard] Gagal membuat akun:', err);
+      const ERR_MAP = {
+        'auth/email-already-in-use': `Email ${studentEmail} sudah terdaftar. Gunakan nomor absen yang berbeda.`,
+        'auth/weak-password':        'Password terlalu lemah. Gunakan minimal 6 karakter.',
+        'auth/invalid-email':        'Format email tidak valid.',
+      };
+      setFormError(ERR_MAP[err.code] || `Gagal: ${err.message}`);
+    } finally {
+      setFormLoading(false);
+    }
+  }, [name, absentNumber, gender, tempPassword, user?.email]);
+
+  // ── Hapus Siswa ────────────────────────────────────────────────────────────
+  const handleDelete = useCallback(async (student) => {
+    if (!window.confirm(`Yakin ingin menghapus profil ${student.name}?`)) return;
+
+    try {
+      await deleteStudent(student.id);
+      await deleteUserDoc(student.userId);
+      // Catatan: Menghapus Firebase Auth account memerlukan Admin SDK.
+      // Akun Auth masih ada tapi tidak punya dokumen Firestore → tidak bisa login efektif.
+    } catch (err) {
+      console.error('[AdminDashboard] Gagal menghapus siswa:', err);
+      alert('Gagal menghapus. Periksa koneksi dan coba lagi.');
+    }
+  }, []);
+
+  // ── Approval ───────────────────────────────────────────────────────────────
+  const handleApprove = useCallback(async (item) => {
+    try {
+      await approvePending(item);
+    } catch (err) {
+      console.error('[AdminDashboard] Gagal approve:', err);
+      alert('Gagal menyetujui konten. Coba lagi.');
+    }
+  }, []);
+
+  const handleReject = useCallback(async (pendingId) => {
     if (!window.confirm('Tolak konten ini?')) return;
-    storage.rejectPending(pendingId);
-    setPending(storage.getPendingItems());
-  };
+    try {
+      await rejectPending(pendingId);
+    } catch (err) {
+      console.error('[AdminDashboard] Gagal reject:', err);
+    }
+  }, []);
 
+  // ── Guard render ──────────────────────────────────────────────────────────
   if (!isAuthenticated || user?.role !== 'admin') return null;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+
       {/* Page Header */}
       <div className="flex items-center gap-3 mb-8">
         <ShieldAlert className="w-8 h-8 text-primary" />
         <h1 className="text-3xl font-bold text-inverted">Admin Dashboard</h1>
+        <span className="ml-auto text-xs text-outlined bg-black/5 px-3 py-1 rounded-full">
+          Firebase Firestore • Real-time
+        </span>
       </div>
 
       {/* Tabs */}
@@ -124,83 +224,134 @@ export default function AdminDashboard() {
         </button>
       </div>
 
-      {/* === TAB: STUDENTS === */}
+      {/* ═══════════════════════════════════════════════════════════════════════
+          TAB: STUDENTS
+      ═══════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'students' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Add form */}
+
+          {/* Add Student Form */}
           <div className="bg-secondary rounded-3xl p-6 h-fit border border-secondary-dark/30">
             <h2 className="text-xl font-bold text-inverted mb-6 flex items-center gap-2">
               <UserPlus className="w-5 h-5 text-primary" /> Tambah Pelajar Baru
             </h2>
+
+            {formSuccess && (
+              <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs">
+                {formSuccess}
+              </div>
+            )}
+            {formError && (
+              <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-xs">
+                {formError}
+              </div>
+            )}
+
             <form onSubmit={handleAddStudent} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-inverted mb-1">Nama Lengkap</label>
-                <input type="text" value={name} onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none" required />
-                <p className="text-[10px] text-outlined mt-1">Username: {name.toLowerCase().replace(/\s+/g, '')}</p>
+                <input
+                  type="text" value={name} onChange={(e) => setName(e.target.value)}
+                  className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                  required
+                />
+                <p className="text-[10px] text-outlined mt-1">
+                  Email akun: <code className="bg-black/5 px-1 rounded">{absentNumber ? `${padAbsen(absentNumber)}@xpplg2.sch.id` : '??@xpplg2.sch.id'}</code>
+                </p>
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-inverted mb-1">No Absen</label>
-                  <input type="number" value={absentNumber} onChange={(e) => setAbsentNumber(e.target.value)}
-                    className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary outline-none" required />
+                  <input
+                    type="number" min="1" max="99"
+                    value={absentNumber} onChange={(e) => setAbsentNumber(e.target.value)}
+                    className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary outline-none"
+                    required
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-inverted mb-1">Gender</label>
-                  <select value={gender} onChange={(e) => setGender(e.target.value)}
-                    className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary outline-none">
+                  <select
+                    value={gender} onChange={(e) => setGender(e.target.value)}
+                    className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary outline-none"
+                  >
                     <option value="L">Laki-Laki</option>
                     <option value="P">Perempuan</option>
                   </select>
                 </div>
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-inverted mb-1">Password Sementara</label>
-                <input type="text" value={tempPassword} onChange={(e) => setTempPassword(e.target.value)}
-                  className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary outline-none" required />
+                <input
+                  type="text" value={tempPassword} onChange={(e) => setTempPassword(e.target.value)}
+                  className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary outline-none"
+                  required minLength={6}
+                />
+                <p className="text-[10px] text-outlined mt-1">Min. 6 karakter (Firebase requirement)</p>
               </div>
-              <button type="submit"
-                className="w-full py-3 mt-2 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-all">
-                Buat Akun & Profil
+
+              <button
+                type="submit"
+                disabled={formLoading}
+                className="w-full py-3 mt-2 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                {formLoading ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Membuat Akun...</>
+                ) : (
+                  'Buat Akun & Profil'
+                )}
               </button>
             </form>
           </div>
 
-          {/* Student list */}
+          {/* Student List */}
           <div className="lg:col-span-2 bg-white rounded-3xl p-6 shadow-sm border border-black/5">
-            <h2 className="text-xl font-bold text-inverted mb-6">Daftar Pelajar ({students.length})</h2>
+            <h2 className="text-xl font-bold text-inverted mb-6">
+              Daftar Pelajar ({students.length})
+              <span className="ml-2 text-xs font-normal text-outlined">• live</span>
+            </h2>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-black/10 text-outlined">
                     <th className="pb-3 font-medium">Absen</th>
-                    <th className="pb-3 font-medium">Nama & Username</th>
+                    <th className="pb-3 font-medium">Nama</th>
                     <th className="pb-3 font-medium">Gender</th>
+                    <th className="pb-3 font-medium">Email Akun</th>
                     <th className="pb-3 font-medium text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {[...students].sort((a, b) => a.absentNumber - b.absentNumber).map(student => {
-                    const studentUser = users.find(u => u.id === student.userId);
-                    return (
-                      <tr key={student.id} className="border-b border-black/5 last:border-0">
-                        <td className="py-3 text-primary font-bold">{student.absentNumber}</td>
-                        <td className="py-3">
-                          <p className="font-semibold text-inverted">{student.name}</p>
-                          <p className="text-xs text-outlined">@{studentUser?.username}</p>
-                        </td>
-                        <td className="py-3">{student.gender === 'L' ? 'Laki-Laki' : 'Perempuan'}</td>
-                        <td className="py-3 text-right">
-                          <button onClick={() => handleDelete(student.userId, student.id)}
-                            className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors" title="Hapus Pelajar">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {[...students].sort((a, b) => a.absentNumber - b.absentNumber).map(student => (
+                    <tr key={student.id} className="border-b border-black/5 last:border-0">
+                      <td className="py-3 text-primary font-bold">{student.absentNumber}</td>
+                      <td className="py-3">
+                        <p className="font-semibold text-inverted">{student.name}</p>
+                        <p className="text-xs text-outlined font-mono">{student.userId?.slice(0, 8)}…</p>
+                      </td>
+                      <td className="py-3">{student.gender === 'L' ? 'Laki-Laki' : 'Perempuan'}</td>
+                      <td className="py-3 text-xs text-outlined font-mono">
+                        {padAbsen(student.absentNumber)}@xpplg2.sch.id
+                      </td>
+                      <td className="py-3 text-right">
+                        <button
+                          onClick={() => handleDelete(student)}
+                          className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                          title="Hapus Pelajar"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
                   {students.length === 0 && (
-                    <tr><td colSpan="4" className="py-8 text-center text-outlined">Belum ada data pelajar.</td></tr>
+                    <tr>
+                      <td colSpan="5" className="py-8 text-center text-outlined">
+                        Belum ada data pelajar.
+                      </td>
+                    </tr>
                   )}
                 </tbody>
               </table>
@@ -209,7 +360,9 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* === TAB: APPROVAL === */}
+      {/* ═══════════════════════════════════════════════════════════════════════
+          TAB: APPROVAL
+      ═══════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'approval' && (
         <div>
           {pending.length === 0 ? (
@@ -234,7 +387,7 @@ export default function AdminDashboard() {
                         <img src={item.data.url} alt={item.data.title}
                           className="w-16 h-16 object-cover rounded-xl border border-black/5" />
                       )}
-                      {(item.type === 'project' || item.type === 'achievement') && item.data.photos && item.data.photos.length > 0 && (
+                      {(item.type === 'project' || item.type === 'achievement') && item.data.photos?.length > 0 && (
                         <img src={item.data.photos[0]} alt={item.data.title}
                           className="w-16 h-16 object-cover rounded-xl border border-black/5" />
                       )}
@@ -245,7 +398,9 @@ export default function AdminDashboard() {
                       <div className="flex items-start justify-between gap-2 mb-1">
                         <p className="font-bold text-inverted truncate">{item.data.title}</p>
                         <span className="text-[10px] text-outlined shrink-0">
-                          {new Date(item.createdAt).toLocaleDateString('id-ID')}
+                          {item.createdAt?.toDate
+                            ? item.createdAt.toDate().toLocaleDateString('id-ID')
+                            : '—'}
                         </span>
                       </div>
                       <p className="text-xs text-primary font-medium mb-2">Oleh {item.studentName}</p>
@@ -267,7 +422,7 @@ export default function AdminDashboard() {
 
                     {/* Actions */}
                     <div className="flex sm:flex-col gap-2 justify-end shrink-0">
-                      <button onClick={() => handleApprove(item.id)}
+                      <button onClick={() => handleApprove(item)}
                         className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-600 transition-colors">
                         <CheckCircle className="w-4 h-4" /> Setujui
                       </button>

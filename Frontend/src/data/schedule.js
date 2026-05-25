@@ -1,46 +1,50 @@
-export const schedule = [
+// src/data/schedule.js
+// Jadwal pelajaran kelas X PPLG 2 SMK Negeri 1 Ciomas.
+// Ditampilkan di ScheduleCard pada BentoGrid / Home page.
+
+const schedule = [
   {
-    day: 'Senin',
+    day: "Sen",
     subjects: [
-      { time: '07:30 - 12:00', name: 'Pemrograman Web', teacher: 'Pak Ikiw' },
-      { time: '08:30 - 10:00', name: 'Basis Data', teacher: 'Bu Sari' },
-      { time: '10:15 - 11:45', name: 'Matematika', teacher: 'Pak Budi' },
-      { time: '12:30 - 14:00', name: 'Bahasa Inggris', teacher: 'Bu Diana' },
+      { time: "07:00 - 08:30", name: "Matematika",                teacher: "Ibu Ratna" },
+      { time: "08:30 - 10:00", name: "Bahasa Indonesia",          teacher: "Ibu Sari" },
+      { time: "10:15 - 11:45", name: "Pemrograman Web",           teacher: "Bpk. Hendra" },
+      { time: "12:30 - 14:00", name: "Basis Data",                teacher: "Ibu Dewi" },
     ],
   },
   {
-    day: 'Selasa',
+    day: "Sel",
     subjects: [
-      { time: '07:00 - 08:30', name: 'Pemrograman Berorientasi Objek', teacher: 'Pak Andi' },
-      { time: '08:30 - 10:00', name: 'Desain Grafis', teacher: 'Bu Rina' },
-      { time: '10:15 - 11:45', name: 'Bahasa Indonesia', teacher: 'Bu Lestari' },
-      { time: '12:30 - 14:00', name: 'Pendidikan Agama', teacher: 'Pak Hasan' },
+      { time: "07:00 - 08:30", name: "Bahasa Inggris",            teacher: "Ibu Linda" },
+      { time: "08:30 - 10:00", name: "Desain Grafis",             teacher: "Bpk. Andi" },
+      { time: "10:15 - 11:45", name: "Pemrograman Berorientasi Objek", teacher: "Bpk. Hendra" },
+      { time: "12:30 - 14:00", name: "Pendidikan Pancasila",      teacher: "Ibu Wati" },
     ],
   },
   {
-    day: 'Rabu',
+    day: "Rab",
     subjects: [
-      { time: '07:00 - 08:30', name: 'Pemrograman Game', teacher: 'Pak Rizal' },
-      { time: '08:30 - 10:00', name: 'IoT & Elektronika', teacher: 'Pak Dimas' },
-      { time: '10:15 - 11:45', name: 'PKN', teacher: 'Bu Wati' },
-      { time: '12:30 - 14:00', name: 'Seni & Sinematografi', teacher: 'Bu Maya' },
+      { time: "07:00 - 08:30", name: "Fisika",                    teacher: "Bpk. Surya" },
+      { time: "08:30 - 10:00", name: "Pemrograman Mobile",        teacher: "Bpk. Rizky" },
+      { time: "10:15 - 11:45", name: "Jaringan Komputer",         teacher: "Bpk. Fajar" },
+      { time: "12:30 - 14:00", name: "Sistem Operasi",            teacher: "Bpk. Hendra" },
     ],
   },
   {
-    day: 'Kamis',
+    day: "Kam",
     subjects: [
-      { time: '07:00 - 08:30', name: 'Pemrograman Web Lanjut', teacher: 'Pak Andi' },
-      { time: '08:30 - 10:00', name: 'Mobile Development', teacher: 'Pak Fajar' },
-      { time: '10:15 - 11:45', name: 'Fisika', teacher: 'Pak Surya' },
-      { time: '12:30 - 14:00', name: 'PJOK', teacher: 'Pak Agus' },
+      { time: "07:00 - 08:30", name: "Matematika",                teacher: "Ibu Ratna" },
+      { time: "08:30 - 10:00", name: "Bahasa Indonesia",          teacher: "Ibu Sari" },
+      { time: "10:15 - 11:45", name: "Kewirausahaan",             teacher: "Ibu Mega" },
+      { time: "12:30 - 14:00", name: "Projek Kreatif",            teacher: "Bpk. Andi" },
     ],
   },
   {
-    day: 'Jumat',
+    day: "Jum",
     subjects: [
-      { time: '07:00 - 08:30', name: 'Project Based Learning', teacher: 'Pak Andi' },
-      { time: '08:30 - 10:00', name: 'UI/UX Design', teacher: 'Bu Rina' },
-      { time: '10:15 - 11:45', name: 'Sejarah', teacher: 'Pak Yanto' },
+      { time: "07:00 - 08:00", name: "Pendidikan Agama",          teacher: "Bpk. Yusuf" },
+      { time: "08:00 - 09:30", name: "Olahraga",                  teacher: "Bpk. Dani" },
+      { time: "09:45 - 11:15", name: "Bahasa Inggris",            teacher: "Ibu Linda" },
     ],
   },
 ];

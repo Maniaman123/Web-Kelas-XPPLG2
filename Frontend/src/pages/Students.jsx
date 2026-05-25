@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Users, User, Code2, UserX, SearchX } from 'lucide-react';
 import { gsap } from 'gsap';
-import { storage } from '../utils/storage';
+import { subscribeToStudents } from '../utils/firestoreService';
 import { getInitials } from '../data/students';
 import StudentModal from '../components/StudentModal';
 
@@ -265,15 +265,18 @@ function StatBadge({ icon: Icon, label, value }) {
 export default function Students() {
   const [query,           setQuery]           = useState('');
   const [genderFilter,    setGenderFilter]    = useState('all');
-  const [students,        setStudents]        = useState(() => storage.getStudents());
+  const [students,        setStudents]        = useState([]);
+  const [loadingData,     setLoadingData]     = useState(true);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const gridRef = useRef(null);
 
-  // Re-sync whenever admin updates data
+  // Real-time Firestore listener — auto-updates grid when admin adds/removes students
   useEffect(() => {
-    const sync = () => setStudents(storage.getStudents());
-    window.addEventListener('storage', sync);
-    return () => window.removeEventListener('storage', sync);
+    const unsubscribe = subscribeToStudents((data) => {
+      setStudents(data);
+      setLoadingData(false);
+    });
+    return unsubscribe; // cleanup listener on unmount
   }, []);
 
   const boys  = students.filter(s => s.gender === 'L').length;
@@ -400,7 +403,16 @@ export default function Students() {
           className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"
         >
           <AnimatePresence mode="popLayout">
-            {filtered.length > 0 ? (
+            {/* Loading skeleton — tampil saat data Firestore belum datang */}
+            {loadingData ? (
+              Array.from({ length: 10 }).map((_, i) => (
+                <div
+                  key={`skeleton-${i}`}
+                  className="rounded-2xl animate-pulse"
+                  style={{ background: 'rgba(220,238,250,0.10)', minHeight: 200 }}
+                />
+              ))
+            ) : filtered.length > 0 ? (
               filtered.map((student, i) => (
                 <MagicTile
                   key={student.id}
@@ -431,7 +443,7 @@ export default function Students() {
                   }
                 </div>
 
-                {/* Headline */}
+                {/* Headline — logika pesan kosong DIPERTAHANKAN IDENTIK */}
                 <p className="text-lg font-bold" style={{ color: AZURE }}>
                   {genderFilter === 'P' && !query && 'Tidak ada siswi ditemukan'}
                   {genderFilter === 'L' && !query && 'Tidak ada siswa laki-laki ditemukan'}

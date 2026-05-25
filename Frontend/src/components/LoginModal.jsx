@@ -1,3 +1,13 @@
+// src/components/LoginModal.jsx
+// ─────────────────────────────────────────────────────────────────────────────
+// Modal Login — Diperbarui untuk Firebase Authentication
+//
+// Perubahan dari versi sebelumnya:
+//   • login() sekarang async (Firebase Auth adalah operasi jaringan)
+//   • Error ditangani langsung dari AuthProvider (sudah diterjemahkan ke BI)
+//   • Tidak ada lagi "simulate network delay" — Firebase menanganinya sendiri
+// ─────────────────────────────────────────────────────────────────────────────
+
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mail, Lock, AlertCircle } from 'lucide-react';
@@ -5,23 +15,23 @@ import useAuth from '../context/useAuth';
 
 export default function LoginModal({ isOpen, onClose }) {
   const { login } = useAuth();
-  const [email, setEmail] = useState('');
+  const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [error,    setError]    = useState('');
+  const [loading,  setLoading]  = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    // Simulate network delay
-    await new Promise((r) => setTimeout(r, 500));
-
-    const result = login(email, password);
+    // login() kini async dan mengembalikan { success, error }
+    const result = await login(email, password);
     if (!result.success) {
       setError(result.error);
     }
+    // Jika sukses, AuthProvider sudah menutup modal via setShowLogin(false)
+
     setLoading(false);
   };
 
@@ -84,14 +94,14 @@ export default function LoginModal({ isOpen, onClose }) {
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-inverted mb-1.5">Username / Email</label>
+                  <label className="block text-sm font-medium text-inverted mb-1.5">Email</label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-outlined" />
                     <input
-                      type="text"
+                      type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="username atau email"
+                      placeholder="email@contoh.com"
                       required
                       className="w-full pl-10 pr-4 py-3 rounded-xl border border-black/10 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm transition-all"
                     />
@@ -118,16 +128,24 @@ export default function LoginModal({ isOpen, onClose }) {
                   disabled={loading}
                   className="w-full py-3 rounded-xl bg-primary text-white font-medium text-sm hover:bg-primary-light transition-all shadow-md hover:shadow-lg disabled:opacity-60 cursor-pointer"
                 >
-                  {loading ? 'Memproses...' : 'Masuk'}
+                  {loading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                      </svg>
+                      Memproses...
+                    </span>
+                  ) : 'Masuk'}
                 </button>
               </form>
 
-              {/* Demo credentials */}
+              {/* Info credentials */}
               <div className="mt-6 p-4 rounded-xl bg-secondary/50 border border-secondary-dark/30">
-                <p className="text-xs font-semibold text-primary mb-2">🔑 Demo Credentials</p>
+                <p className="text-xs font-semibold text-primary mb-2">🔑 Info Login</p>
                 <div className="space-y-1 text-xs text-outlined">
-                  <p><span className="font-medium">Admin:</span> admin@gmail.com / 123</p>
-                  <p className="text-[10px] text-outlined/60 mt-1">Pelajar: dibuat oleh Admin melalui Dashboard</p>
+                  <p><span className="font-medium">Admin:</span> Gunakan email & password dari Firebase Console</p>
+                  <p><span className="font-medium">Siswa:</span> Email format <code className="bg-black/5 px-1 rounded">noabsen@xpplg2.sch.id</code></p>
                 </div>
               </div>
             </div>

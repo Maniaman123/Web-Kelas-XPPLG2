@@ -1,24 +1,42 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Frontend .gitignore — X PPLG 2 SMK Negeri 1 Ciomas Web App
+# Root .gitignore — X PPLG 2 SMK Negeri 1 Ciomas Web App
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Dependencies
-node_modules/
+# Instruksi / Dokumen Internal
+instruksi/
 
-# Environment Variables & Secrets
+# Dependencies / Package Managers
+node_modules/
+**/node_modules/
+.pnpm-store/
+jspm_packages/
+web_modules/
+
+# Environment Variables & Secrets (Sangat Penting!)
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+.env.staging.local
+.env.preview.local
 *.env
 .env.*
+**/.env
+**/.env.*
 !*.env.example
+!**/*.env.example
 !*.env.template
+!**/*.env.template
+.git-credentials
+.netrc
+.npmrc
+.pypirc
 
 # Firebase / Emulator Caches & Logs
 .firebase/
 *-debug.log
+**/*-debug.log
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
@@ -28,23 +46,36 @@ storage-debug.log
 auth-debug.log
 hosting-debug.log
 
-# Build Outputs
+# Build & Production Bundles
 dist/
 dist-ssr/
 build/
+out/
+.next/
+**/dist/
+**/dist-ssr/
+**/build/
+**/out/
 
-# Editor / IDE Settings
-.vscode/*
+# IDE / Editor Settings
+.vscode/
 !.vscode/extensions.json
 .idea/
-.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+*.swo
+.DS_Store
+**/.DS_Store
+Thumbs.db
 
-# Logs
+# Agent Caches & Internal Tooling
+.agents/
+skills-lock.json
+
+# System & Package Logs
 logs
 *.log
 npm-debug.log*

@@ -1,0 +1,97 @@
+rules_version = '2';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Firestore Security Rules — X PPLG 2 Web App
+//
+// Prinsip Keamanan:
+//   1. Public read untuk data konten (students, projects, achievements, cinematography)
+//      → Pengunjung tanpa akun bisa melihat semua data publik
+//   2. Siswa hanya bisa update PROFIL MILIKNYA SENDIRI
+//      → Divalidasi via isStudentOwner() yang mengecek field userId di dokumen
+//   3. Admin bisa melakukan semua operasi (create, read, update, delete)
+//      → Divalidasi via isAdmin() yang membaca role dari koleksi users
+//   4. Pending items: siswa bisa CREATE, admin bisa READ dan DELETE
+//
+// Deploy rules ini via:
+//   firebase deploy --only firestore:rules
+// ─────────────────────────────────────────────────────────────────────────────
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Users Collection ───────────────────────────────────────────────────
+    // Dokumen user berisi: { role, name, email, studentId? }
+    // Hanya pemilik dan admin yang bisa membaca data user
+    match /users/{uid} {
+      allow read:   if request.auth != null && (request.auth.uid == uid || isAdmin());
+      allow create: if isAdmin();
+      allow update: if isAdmin() || request.auth.uid == uid;
+      allow delete: if isAdmin();
+    }
+
+    // ── Students Collection ────────────────────────────────────────────────
+    // Public read → semua pengunjung bisa melihat direktori siswa
+    // Update → hanya pemilik profil (self-edit) atau admin
+    // Create/Delete → hanya admin
+    match /students/{studentId} {
+      allow read:   if true;
+      allow create: if isAdmin();
+      allow update: if isAdmin() || isStudentOwner(studentId);
+      allow delete: if isAdmin();
+    }
+
+    // ── Projects Collection ────────────────────────────────────────────────
+    // Public read, admin write
+    match /projects/{projectId} {
+      allow read:  if true;
+      allow write: if isAdmin();
+    }
+
+    // ── Achievements Collection ────────────────────────────────────────────
+    // Public read, admin write
+    match /achievements/{achievementId} {
+      allow read:  if true;
+      allow write: if isAdmin();
+    }
+
+    // ── Cinematography Collection ──────────────────────────────────────────
+    // Public read, admin write
+    match /cinematography/{itemId} {
+      allow read:  if true;
+      allow write: if isAdmin();
+    }
+
+    // ── Pending Items Collection ───────────────────────────────────────────
+    // Authenticated users (siswa) bisa CREATE (submit konten untuk review)
+    // Hanya admin yang bisa READ daftar pending dan DELETE (approve/reject)
+    match /pendingItems/{pendingId} {
+      allow create: if request.auth != null;
+      allow read:   if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Helper Functions ───────────────────────────────────────────────────
+
+    /**
+     * Cek apakah user yang sedang login adalah admin.
+     * Membaca field role dari dokumen users/{uid}.
+     */
+    function isAdmin() {
+      return request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    /**
+     * Cek apakah user yang sedang login adalah pemilik profil siswa.
+     * Membandingkan Firebase UID dengan field userId di dokumen students.
+     *
+     * Ini adalah implementasi aturan Self-Edit:
+     * "Siswa tidak boleh dan tidak bisa mengedit data milik siswa lain."
+     * (BRD — Core Business Rules, Pasal Otorisasi Ketat)
+     */
+    function isStudentOwner(studentId) {
+      return request.auth != null &&
+        get(/databases/$(database)/documents/students/$(studentId)).data.userId == request.auth.uid;
+    }
+  }
+}

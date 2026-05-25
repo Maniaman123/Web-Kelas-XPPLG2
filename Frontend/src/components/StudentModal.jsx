@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Edit3, Save, ExternalLink } from 'lucide-react';
-import { storage } from '../utils/storage';
+import { updateStudentProfile } from '../utils/firestoreService';
 import { getInitials, roles } from '../data/students';
 import useAuth from '../context/useAuth';
 
@@ -74,8 +74,10 @@ const Textarea = ({ label, value, onChange, placeholder }) => (
 export default function StudentModal({ student, onClose, onSave, layoutId }) {
   const { user, isAuthenticated } = useAuth();
 
-  // Only the owner (matched by id) can edit
-  const canEdit = isAuthenticated && user?.id === student.id;
+  // ── Keamanan Self-Edit: hanya pemilik yang bisa edit ────────────────────
+  // user.id = Firebase UID; student.userId = Firebase UID pemilik profil.
+  // Pencocokan ini IDENTIK dengan logika LocalStorage sebelumnya.
+  const canEdit = isAuthenticated && user?.id === student.userId;
 
   const [editing, setEditing]   = useState(false);
   const [saved,   setSaved]     = useState(false);
@@ -107,18 +109,27 @@ export default function StudentModal({ student, onClose, onSave, layoutId }) {
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  const handleSave = () => {
-    const allStudents  = storage.getStudents();
-    const updated      = allStudents.map(s =>
-      s.id === student.id
-        ? { ...s, name: form.name, about: form.about, ig: form.ig, github: form.github, role: form.role }
-        : s
-    );
-    storage.saveStudents(updated);
-    onSave({ ...student, ...form });
-    setSaved(true);
-    setEditing(false);
-    setTimeout(() => setSaved(false), 2000);
+  // ── Simpan ke Firestore ─────────────────────────────────────────────────
+  // updateStudentProfile melakukan partial update (updateDoc) sehingga field
+  // lain (absentNumber, gender, dll.) tidak tertimpa.
+  // onSave dipanggil untuk optimistic update pada grid SEBELUM onSnapshot tiba.
+  const handleSave = async () => {
+    try {
+      await updateStudentProfile(student.id, {
+        name:   form.name,
+        about:  form.about,
+        ig:     form.ig,
+        github: form.github,
+        role:   form.role,
+      });
+      onSave({ ...student, ...form });  // optimistic UI
+      setSaved(true);
+      setEditing(false);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      console.error('[StudentModal] Gagal menyimpan profil:', err);
+      // TODO: tampilkan toast error jika diperlukan
+    }
   };
 
   const initials    = student.initials || getInitials(student.name);

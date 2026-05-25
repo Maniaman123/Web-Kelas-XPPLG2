@@ -1,43 +1,35 @@
-export const projects = [
+// src/data/projects.js
+// Static project data for the BentoGrid / Home page showcase.
+// Proyek nyata dari siswa dikelola di Firestore (koleksi 'projects').
+
+const projects = [
   {
     id: 1,
-    name: 'Dashboard-UMKM',
+    name: "Website X PPLG 2",
     description:
-      'Platform dashboard untuk membantu UMKM dalam mengelola bisnis mereka. Dilengkapi dengan fitur manajemen produk, laporan penjualan, dan analisis data pelanggan.',
-    tech: ['React', 'Tailwind CSS', 'Node.js', 'PostgreSQL'],
-    status: 'In Progress',
+      "Platform ekosistem digital kelas X PPLG 2 — direktori talenta siswa, galeri proyek, dan portofolio kolektif berbasis Firebase.",
+    tech: ["React", "Vite", "Tailwind CSS", "Firebase"],
+    status: "Active",
+    contributors: 46,
     featured: true,
-    contributors: 8,
   },
   {
     id: 2,
-    name: 'Smart Classroom IoT',
-    description:
-      'Sistem IoT untuk monitoring suhu, kelembaban, dan kualitas udara di dalam kelas menggunakan Arduino Uno dan berbagai sensor.',
-    tech: ['Arduino', 'C++', 'React', 'MQTT'],
-    status: 'Active',
+    name: "Smart IoT Monitoring",
+    description: "Sistem monitoring suhu dan kelembaban ruang kelas berbasis Arduino.",
+    tech: ["Arduino", "C++", "MQTT"],
+    status: "Active",
+    contributors: 8,
     featured: false,
-    contributors: 4,
   },
   {
     id: 3,
-    name: 'Class Portfolio Web',
-    description:
-      'Website portfolio kolektif kelas X PPLG 2 yang menampilkan karya-karya pelajar dan informasi kelas.',
-    tech: ['React', 'Tailwind CSS', 'Vite'],
-    status: 'Active',
-    featured: false,
-    contributors: 3,
-  },
-  {
-    id: 4,
-    name: 'Game Platformer 2D',
-    description:
-      'Game platformer 2D berbasis web menggunakan Phaser.js dengan level design yang menarik dan karakter original.',
-    tech: ['Phaser.js', 'JavaScript', 'Tiled'],
-    status: 'Planning',
-    featured: false,
+    name: "Mobile Attendance App",
+    description: "Aplikasi absensi mobile untuk siswa dengan QR Code.",
+    tech: ["Flutter", "Firebase", "Dart"],
+    status: "In Progress",
     contributors: 5,
+    featured: false,
   },
 ];
 
