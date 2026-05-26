@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import useAuth from '../context/useAuth';
-import { storage } from '../utils/storage';
+import { getAchievements, subscribeToPending, submitPending } from '../utils/firestoreService';
 import { Trophy, Plus, Clock, X, Upload } from 'lucide-react';
 
 const MAX_FILE_MB = 2;
@@ -8,13 +8,11 @@ const MAX_FILE_MB = 2;
 export default function Achievements() {
   const { user, isAuthenticated } = useAuth();
 
-  const allApproved = storage.getAchievements();
-  const allPending  = storage.getPendingItems().filter(p => p.type === 'achievement');
-
-  const [achievements, setAchievements] = useState(allApproved);
-  const [pending, setPending]           = useState(allPending);
+  const [achievements, setAchievements] = useState([]);
+  const [pending, setPending]           = useState([]);
+  const [loading, setLoading]           = useState(true);
   const [showAddForm, setShowAddForm]   = useState(false);
-  const [submitted, setSubmitted]       = useState(false);
+  const [submitted, setSubmitted]     = useState(false);
   const [title, setTitle]               = useState('');
   const [date, setDate]                 = useState('');
   const [description, setDescription]   = useState('');
@@ -22,6 +20,26 @@ export default function Achievements() {
   const [photos, setPhotos]             = useState([]);
   const [fileError, setFileError]       = useState('');
   const fileInputRef                    = useRef(null);
+
+  useEffect(() => {
+    async function loadAchievements() {
+      try {
+        const approved = await getAchievements();
+        setAchievements(approved);
+      } catch (err) {
+        console.error("Failed to load approved achievements:", err);
+      }
+    }
+    loadAchievements();
+
+    const unsubscribe = subscribeToPending((items) => {
+      const achievementsPending = items.filter(p => p.type === 'achievement');
+      setPending(achievementsPending);
+      setLoading(false);
+    });
+
+    return unsubscribe;
+  }, []);
 
   const handleFileChange = (e) => {
     setFileError('');
@@ -57,21 +75,26 @@ export default function Achievements() {
     setPhotos(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleAddAchievement = (e) => {
+  const handleAddAchievement = async (e) => {
     e.preventDefault();
     if (!title || !date || !description) return;
     const data = { studentId: user.id, studentName: user.name, title, date, description, photos };
-    const newPending = storage.submitPending('achievement', user.id, user.name, data);
-    setPending(prev => [...prev, newPending]);
-    setTitle(''); setDate(''); setDescription(''); setPhotos([]); setFileError('');
-    if (fileInputRef.current) fileInputRef.current.value = '';
-    setShowAddForm(false); setSubmitted(true);
+    
+    try {
+      await submitPending('achievement', user.id, user.name, data);
+      setTitle(''); setDate(''); setDescription(''); setPhotos([]); setFileError('');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      setShowAddForm(false); setSubmitted(true);
+    } catch (err) {
+      console.error("Failed to submit achievement:", err);
+      setFileError("Gagal mengirimkan prestasi. Coba lagi.");
+    }
   };
 
   const myPendingItems = pending.filter(p => p.studentId === user?.id);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 font-sans">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10">
         <div className="flex items-center gap-3">
           <Trophy className="w-8 h-8 text-primary" />
@@ -80,7 +103,7 @@ export default function Achievements() {
         {isAuthenticated && user?.role === 'student' && (
           <div className="flex flex-col items-end gap-1">
             <button onClick={() => setShowAddForm(!showAddForm)}
-              className="px-4 py-2 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-all flex items-center gap-2">
+              className="px-4 py-2 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-all flex items-center gap-2 cursor-pointer shadow-sm">
               <Plus className="w-4 h-4" /> Tambah Prestasi
             </button>
           </div>
@@ -91,7 +114,7 @@ export default function Achievements() {
         <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3 text-amber-800 text-sm">
           <Clock className="w-5 h-5 shrink-0" />
           <span>Prestasimu dikirim dan <strong>menunggu persetujuan admin</strong>.</span>
-          <button onClick={() => setSubmitted(false)} className="ml-auto"><X className="w-4 h-4" /></button>
+          <button onClick={() => setSubmitted(false)} className="ml-auto cursor-pointer"><X className="w-4 h-4" /></button>
         </div>
       )}
 
@@ -103,18 +126,18 @@ export default function Achievements() {
               <div>
                 <label className="block text-sm font-medium text-inverted mb-1">Nama Prestasi / Lomba</label>
                 <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary outline-none" required />
+                  className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary outline-none bg-white" required />
               </div>
               <div>
                 <label className="block text-sm font-medium text-inverted mb-1">Bulan/Tahun (contoh: Agustus 2025)</label>
                 <input type="text" value={date} onChange={(e) => setDate(e.target.value)}
-                  className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary outline-none" required />
+                  className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary outline-none bg-white" required />
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-inverted mb-1">Deskripsi Singkat</label>
               <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3}
-                className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary outline-none resize-none" required />
+                className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary outline-none resize-none bg-white" required />
             </div>
             <div>
               <label className="block text-sm font-medium text-inverted mb-1">
@@ -125,7 +148,7 @@ export default function Achievements() {
                   <div key={i} className="relative w-24 h-24 rounded-xl border border-black/10 overflow-hidden shrink-0 group">
                     <img src={photo} alt="preview" className="w-full h-full object-cover" />
                     <button type="button" onClick={() => removePhoto(i)} 
-                      className="absolute top-1 right-1 bg-black/50 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-500">
+                      className="absolute top-1 right-1 bg-black/50 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-500 cursor-pointer">
                       <X className="w-3 h-3" />
                     </button>
                   </div>
@@ -140,9 +163,9 @@ export default function Achievements() {
             </div>
             <div className="flex justify-end gap-3 pt-2">
               <button type="button" onClick={() => setShowAddForm(false)}
-                className="px-4 py-2 rounded-xl border border-black/10 text-outlined font-medium hover:bg-black/5">Batal</button>
+                className="px-4 py-2 rounded-xl border border-black/10 text-outlined font-medium hover:bg-black/5 cursor-pointer">Batal</button>
               <button type="submit"
-                className="px-6 py-2 rounded-xl bg-primary text-white font-medium hover:bg-primary/90">Kirim untuk Disetujui</button>
+                className="px-6 py-2 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 cursor-pointer">Kirim untuk Disetujui</button>
             </div>
           </form>
         </div>
@@ -179,22 +202,26 @@ export default function Achievements() {
       )}
 
       <div className="space-y-4">
-        {achievements.length === 0 ? (
+        {loading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="bg-white p-6 rounded-3xl shadow-sm border border-black/5 h-32 animate-pulse" />
+          ))
+        ) : achievements.length === 0 ? (
           <div className="py-20 text-center text-outlined border-2 border-dashed border-black/10 rounded-3xl">
             Belum ada prestasi yang disetujui.
           </div>
         ) : (
           achievements.map((item) => (
-            <div key={item.id} className="bg-white p-6 rounded-3xl shadow-sm border border-black/5 flex flex-col sm:flex-row gap-4 items-start">
+            <div key={item.id} className="bg-white p-6 rounded-3xl shadow-sm border border-black/5 flex flex-col sm:flex-row gap-4 items-start hover:shadow-md transition-shadow">
               <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center shrink-0">
                 <Trophy className="w-6 h-6" />
               </div>
               <div className="flex-1 w-full min-w-0">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
                   <h3 className="text-lg font-bold text-inverted">{item.title}</h3>
-                  <span className="text-sm font-medium text-primary bg-primary/5 px-2 py-1 rounded-md w-fit">{item.date}</span>
+                  <span className="text-sm font-medium text-primary bg-primary/5 px-2.5 py-1 rounded-md w-fit">{item.date}</span>
                 </div>
-                <p className="text-sm text-outlined mb-3">{item.description}</p>
+                <p className="text-sm text-outlined mb-3 leading-relaxed">{item.description}</p>
                 {item.photos && item.photos.length > 0 && (
                   <div className="flex overflow-x-auto gap-2 mb-3 pb-2 scrollbar-hide">
                     {item.photos.map((ph, idx) => (

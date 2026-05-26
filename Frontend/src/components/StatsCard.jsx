@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Users, FolderGit2, BookOpen, Trophy } from 'lucide-react';
-import { storage } from '../utils/storage';
+import { getStudents, getProjects, getAchievements } from '../utils/firestoreService';
 
 function AnimatedCounter({ target, suffix }) {
   const [count, setCount] = useState(0);
@@ -29,24 +29,41 @@ function AnimatedCounter({ target, suffix }) {
 }
 
 export default function StatsCard() {
-  // Read live counts from LocalStorage
-  const pelajarCount  = storage.getStudents().length;
-  const proyekCount   = storage.getProjects().length;
-  const prestasiCount = storage.getAchievements().length;
+  const [counts, setCounts] = useState({ pelajar: 0, proyek: 0, prestasi: 0 });
+
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        const [studentsData, projectsData, achievementsData] = await Promise.all([
+          getStudents(),
+          getProjects(),
+          getAchievements()
+        ]);
+        setCounts({
+          pelajar: studentsData.length,
+          proyek: projectsData.length,
+          prestasi: achievementsData.length
+        });
+      } catch (err) {
+        console.error("Failed to load stats from Firestore:", err);
+      }
+    }
+    loadStats();
+  }, []);
 
   const stats = [
-    { icon: Users,      label: 'Pelajar',        value: pelajarCount,  suffix: '' },
-    { icon: FolderGit2, label: 'Proyek Aktif',   value: proyekCount,   suffix: '' },
+    { icon: Users,      label: 'Pelajar',        value: counts.pelajar,  suffix: '' },
+    { icon: FolderGit2, label: 'Proyek Aktif',   value: counts.proyek,   suffix: '' },
     { icon: BookOpen,   label: 'Mata Pelajaran',  value: 5,             suffix: '' },
-    { icon: Trophy,     label: 'Prestasi',        value: prestasiCount, suffix: '' },
+    { icon: Trophy,     label: 'Prestasi',        value: counts.prestasi, suffix: '' },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:gap-4">
+    <div className="grid grid-cols-2 gap-3 sm:gap-4 font-sans">
       {stats.map((stat) => (
         <div
           key={stat.label}
-          className="text-center p-3 sm:p-4 rounded-2xl bg-surface-alt hover:bg-secondary/30 transition-colors"
+          className="text-center p-3 sm:p-4 rounded-2xl bg-surface-alt hover:bg-secondary/35 transition-colors"
         >
           <stat.icon className="w-5 h-5 sm:w-6 sm:h-6 text-primary mx-auto mb-2" />
           <AnimatedCounter target={stat.value} suffix={stat.suffix} />

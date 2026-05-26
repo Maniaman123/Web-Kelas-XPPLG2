@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import useAuth from '../context/useAuth';
-import { storage } from '../utils/storage';
+import { getCinematography, subscribeToPending, submitPending } from '../utils/firestoreService';
 import { Camera, Plus, Play, Clock, Upload, X } from 'lucide-react';
 
 const MAX_FILE_MB = 2;
@@ -8,17 +8,9 @@ const MAX_FILE_MB = 2;
 export default function Cinematography() {
   const { user, isAuthenticated } = useAuth();
 
-  const allApproved  = storage.getCinematography();
-  const allPending   = storage.getPendingItems().filter(p => p.type === 'cinematography');
-
-  // How many times THIS user has uploaded (approved + pending)
-  const myApproved = allApproved.filter(m => m.studentId === user?.id);
-  const myPending  = allPending.filter(p => p.studentId === user?.id);
-  const myTotal    = myApproved.length + myPending.length;
-  const canUpload  = isAuthenticated && user?.role === 'student' && myTotal < 1;
-
-  const [media, setMedia]         = useState(allApproved);
-  const [pending, setPending]     = useState(allPending);
+  const [media, setMedia]         = useState([]);
+  const [pending, setPending]     = useState([]);
+  const [loading, setLoading]     = useState(true);
   const [showForm, setShowForm]   = useState(false);
   const [title, setTitle]         = useState('');
   const [type, setType]           = useState('photo');
@@ -27,6 +19,32 @@ export default function Cinematography() {
   const [fileError, setFileError] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    async function loadCinematography() {
+      try {
+        const approved = await getCinematography();
+        setMedia(approved);
+      } catch (err) {
+        console.error("Failed to load approved cinematography:", err);
+      }
+    }
+    loadCinematography();
+
+    const unsubscribe = subscribeToPending((items) => {
+      const cinematographyPending = items.filter(p => p.type === 'cinematography');
+      setPending(cinematographyPending);
+      setLoading(false);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  // How many times THIS user has uploaded (approved + pending)
+  const myApproved = media.filter(m => m.studentId === user?.id);
+  const myPending  = pending.filter(p => p.studentId === user?.id);
+  const myTotal    = myApproved.length + myPending.length;
+  const canUpload  = isAuthenticated && user?.role === 'student' && myTotal < 1;
 
   const handleFileChange = (e) => {
     setFileError('');
@@ -62,7 +80,7 @@ export default function Cinematography() {
     setPhotos(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title) return;
     if (type === 'photo' && photos.length === 0) { setFileError('Pilih file foto terlebih dahulu.'); return; }
@@ -73,22 +91,26 @@ export default function Cinematography() {
       studentName: user.name,
       title,
       type,
-      url: type === 'photo' ? photos[0] : videoUrl, // fallback for legacy compatibility
+      url: type === 'photo' ? photos[0] : videoUrl,
       photos: type === 'photo' ? photos : undefined,
     };
 
-    const newPending = storage.submitPending('cinematography', user.id, user.name, data);
-    setPending(prev => [...prev, newPending]);
-    setSubmitted(true);
-    setShowForm(false);
-    setTitle(''); setPhotos([]); setVideoUrl(''); setFileError('');
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    try {
+      await submitPending('cinematography', user.id, user.name, data);
+      setSubmitted(true);
+      setShowForm(false);
+      setTitle(''); setPhotos([]); setVideoUrl(''); setFileError('');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch (err) {
+      console.error("Failed to submit cinematography:", err);
+      setFileError("Gagal mengirimkan karya. Coba lagi.");
+    }
   };
 
   const myPendingItems = pending.filter(p => p.studentId === user?.id);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 font-sans">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10">
         <div className="flex items-center gap-3">
@@ -100,7 +122,7 @@ export default function Cinematography() {
           canUpload ? (
             <button
               onClick={() => setShowForm(!showForm)}
-              className="px-4 py-2 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-all flex items-center gap-2 w-fit"
+              className="px-4 py-2 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-all flex items-center gap-2 w-fit cursor-pointer shadow-sm"
             >
               <Plus className="w-4 h-4" /> Upload Karya
             </button>
@@ -119,7 +141,7 @@ export default function Cinematography() {
         <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3 text-amber-800 text-sm">
           <Clock className="w-5 h-5 shrink-0" />
           <span>Karyamu berhasil dikirim dan <strong>menunggu persetujuan admin</strong>. Akan muncul di galeri setelah disetujui.</span>
-          <button onClick={() => setSubmitted(false)} className="ml-auto"><X className="w-4 h-4" /></button>
+          <button onClick={() => setSubmitted(false)} className="ml-auto cursor-pointer"><X className="w-4 h-4" /></button>
         </div>
       )}
 
@@ -132,7 +154,7 @@ export default function Cinematography() {
               <label className="block text-sm font-medium text-inverted mb-1">Judul Karya</label>
               <input
                 type="text" value={title} onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary outline-none"
+                className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary outline-none bg-white"
                 required
               />
             </div>
@@ -140,7 +162,7 @@ export default function Cinematography() {
             <div>
               <label className="block text-sm font-medium text-inverted mb-1">Jenis Media</label>
               <select value={type} onChange={(e) => { setType(e.target.value); setPhotos([]); setVideoUrl(''); setFileError(''); }}
-                className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary outline-none">
+                className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary outline-none bg-white">
                 <option value="photo">Foto</option>
                 <option value="video">Video (URL YouTube)</option>
               </select>
@@ -156,7 +178,7 @@ export default function Cinematography() {
                     <div key={i} className="relative w-24 h-24 rounded-xl border border-black/10 overflow-hidden shrink-0 group">
                       <img src={photo} alt="preview" className="w-full h-full object-cover" />
                       <button type="button" onClick={() => removePhoto(i)} 
-                        className="absolute top-1 right-1 bg-black/50 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-500">
+                        className="absolute top-1 right-1 bg-black/50 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-500 cursor-pointer">
                         <X className="w-3 h-3" />
                       </button>
                     </div>
@@ -175,7 +197,7 @@ export default function Cinematography() {
                 <input
                   type="url" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)}
                   placeholder="https://youtube.com/watch?v=..."
-                  className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary outline-none"
+                  className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary outline-none bg-white"
                 />
                 {fileError && <p className="text-xs text-red-500 mt-1">{fileError}</p>}
               </div>
@@ -183,11 +205,11 @@ export default function Cinematography() {
 
             <div className="flex justify-end gap-3 pt-2">
               <button type="button" onClick={() => setShowForm(false)}
-                className="px-4 py-2 rounded-xl border border-black/10 text-outlined font-medium hover:bg-black/5 transition-all">
+                className="px-4 py-2 rounded-xl border border-black/10 text-outlined font-medium hover:bg-black/5 transition-all cursor-pointer">
                 Batal
               </button>
               <button type="submit"
-                className="px-6 py-2 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-all">
+                className="px-6 py-2 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-all cursor-pointer">
                 Kirim untuk Disetujui
               </button>
             </div>
@@ -227,13 +249,17 @@ export default function Cinematography() {
 
       {/* Approved gallery */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {media.length === 0 ? (
+        {loading ? (
+          Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="bg-white p-6 rounded-3xl shadow-sm border border-black/5 h-48 animate-pulse" />
+          ))
+        ) : media.length === 0 ? (
           <div className="col-span-full py-20 text-center text-outlined border-2 border-dashed border-black/10 rounded-3xl">
             Belum ada karya yang disetujui.
           </div>
         ) : (
           media.map((item) => (
-            <div key={item.id} className="bg-white p-6 rounded-3xl shadow-sm border border-black/5 flex flex-col">
+            <div key={item.id} className="bg-white p-6 rounded-3xl shadow-sm border border-black/5 flex flex-col hover:shadow-md transition-shadow">
               <h3 className="text-lg font-bold text-inverted mb-2">{item.title}</h3>
               {item.type === 'photo' ? (
                 item.photos && item.photos.length > 0 ? (
@@ -252,7 +278,7 @@ export default function Cinematography() {
                 </div>
               )}
               <div className="pt-4 border-t border-black/5 flex items-center justify-between mt-auto">
-                <span className="text-xs font-medium text-primary bg-primary/5 px-2 py-1 rounded-md">Oleh {item.studentName}</span>
+                <span className="text-xs font-medium text-primary bg-primary/5 px-2.5 py-1 rounded-md">Oleh {item.studentName}</span>
               </div>
             </div>
           ))

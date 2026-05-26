@@ -33,7 +33,7 @@ const GithubIcon = ({ className }) => (
 // ─────────────────────────────────────────────
 // MAGIC BENTO TILE — GSAP tilt + Framer layoutId
 // ─────────────────────────────────────────────
-function MagicTile({ children, delay = 0, onClick, layoutId }) {
+function MagicTile({ children, onClick, layoutId }) {
   // gsapRef → plain div that GSAP tilts (no Framer conflict)
   const gsapRef = useRef(null);
   const magRef  = useRef(null);

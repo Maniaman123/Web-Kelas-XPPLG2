@@ -1,22 +1,31 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Users, Search } from "lucide-react";
 import useAuth from "../context/useAuth";
-import { storage } from "../utils/storage";
+import { subscribeToStudents } from "../utils/firestoreService";
 import BentoCard from "./BentoCard";
 import StudentCard from "./StudentCard";
 import ScheduleCard from "./ScheduleCard";
 import StatsCard from "./StatsCard";
-import ProjectShowcase from "./ProjectShowcase";
+import FeaturedProjectCard from "./FeaturedProjectCard";
 import CinematographyCard from "./CinematographyCard";
 import { GlobalSpotlight } from "./MagicBento";
 
 export default function BentoGrid() {
   const { user } = useAuth();
   const gridRef = useRef(null);
-  const [students] = useState(() => storage.getStudents() || []);
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [genderFilter, setGenderFilter] = useState("all"); // 'all', 'L', 'P'
   const [showAll, setShowAll] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToStudents((data) => {
+      setStudents(data);
+      setLoading(false);
+    });
+    return unsubscribe;
+  }, []);
 
   const filteredStudents = students.filter((s) => {
     const matchesSearch =
@@ -158,11 +167,12 @@ export default function BentoGrid() {
         <BentoCard
           colSpan={2}
           className="xl:col-span-2"
+          variant="secondary"
           id="proyek"
           enableBorderGlow
           enableTilt
         >
-          <ProjectShowcase />
+          <FeaturedProjectCard />
         </BentoCard>
 
         {/* ============================================ */}

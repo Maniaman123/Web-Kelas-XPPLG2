@@ -94,10 +94,6 @@ export default function AdminDashboard() {
     setFormError('');
     setFormSuccess('');
 
-    // Simpan kredensial admin untuk re-auth nanti
-    const adminEmail    = user.email;
-    const adminPassword = null; // kita tidak punya password admin di client — gunakan cara lain
-
     const studentEmail = `${padAbsen(absentNumber)}@xpplg2.sch.id`;
 
     try {

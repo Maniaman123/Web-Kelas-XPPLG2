@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Edit3, Save, ExternalLink } from 'lucide-react';
 import { updateStudentProfile } from '../utils/firestoreService';
@@ -81,26 +81,25 @@ export default function StudentModal({ student, onClose, onSave, layoutId }) {
 
   const [editing, setEditing]   = useState(false);
   const [saved,   setSaved]     = useState(false);
-  const [form, setForm]         = useState({
+
+  // Derive initial form values from student prop.
+  // useMemo (not useState+useEffect) avoids the cascading-render anti-pattern.
+  const initialForm = useMemo(() => ({
     name:   student.name   || '',
     about:  student.about  || '',
     ig:     student.ig     || '',
     github: student.github || '',
     role:   student.role   || null,
-  });
+  }), [student.id, student.name, student.about, student.ig, student.github, student.role]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Reset when student changes
+  const [form, setForm] = useState(initialForm);
+
+  // Reset form & editing state whenever the displayed student changes
   useEffect(() => {
-    setForm({
-      name:   student.name   || '',
-      about:  student.about  || '',
-      ig:     student.ig     || '',
-      github: student.github || '',
-      role:   student.role   || null,
-    });
+    setForm(initialForm);
     setEditing(false);
     setSaved(false);
-  }, [student.id]);
+  }, [student.id]); // intentionally only reset on student ID change, not every field update
 
   // Close on Escape
   useEffect(() => {
