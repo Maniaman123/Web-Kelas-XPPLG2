@@ -37,6 +37,7 @@ const COL = {
   ACHIEVEMENTS:   'achievements',
   CINEMATOGRAPHY: 'cinematography',
   PENDING:        'pendingItems',
+  SCHEDULE:       'schedule',
 };
 
 
@@ -322,4 +323,64 @@ export async function approvePending(pendingItem) {
  */
 export async function rejectPending(pendingId) {
   await deleteDoc(doc(db, COL.PENDING, pendingId));
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SCHEDULE COLLECTION
+// Koleksi `schedule` menyimpan jadwal pelajaran X PPLG 2.
+// Setiap dokumen = satu hari (id: 'senin', 'selasa', ..., 'jumat').
+// Struktur dokumen: { day: string, subjects: SubjectItem[] }
+// SubjectItem: { jamKe: number, timeSlot: string, name: string, teacherCode: string }
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * [REAL-TIME] Subscribe ke seluruh koleksi schedule.
+ * ScheduleCard.jsx menggunakan ini untuk auto-update tanpa reload.
+ *
+ * @param {Function} callback - Dipanggil dengan array { id, day, subjects }[]
+ * @returns {Function} Fungsi unsubscribe — panggil saat komponen unmount
+ */
+export function subscribeToSchedule(callback) {
+  return onSnapshot(collection(db, COL.SCHEDULE), (snapshot) => {
+    const days = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    // Urutkan: senin → selasa → rabu → kamis → jumat
+    const ORDER = ['senin', 'selasa', 'rabu', 'kamis', 'jumat'];
+    days.sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id));
+    callback(days);
+  });
+}
+
+/**
+ * Update subjects untuk satu hari tertentu.
+ * Hanya Admin yang boleh memanggil ini (dijaga via Firestore Security Rules).
+ *
+ * @param {string}   dayId           - ID dokumen, misal 'senin'
+ * @param {Object[]} updatedSubjects  - Array SubjectItem baru
+ */
+export async function updateSchedule(dayId, updatedSubjects) {
+  await setDoc(
+    doc(db, COL.SCHEDULE, dayId),
+    { subjects: updatedSubjects, updatedAt: serverTimestamp() },
+    { merge: true }
+  );
+}
+
+/**
+ * Seed awal — tulis semua 5 hari sekaligus menggunakan batch write.
+ * Dipanggil SEKALI dari Admin Dashboard saat koleksi schedule masih kosong.
+ * Aman untuk dipanggil ulang (setDoc dengan merge: false → overwrite).
+ *
+ * @param {Object[]} scheduleArray - Array of { id, day, subjects }
+ */
+export async function seedSchedule(scheduleArray) {
+  const batch = writeBatch(db);
+  scheduleArray.forEach(({ id, day, subjects }) => {
+    batch.set(doc(db, COL.SCHEDULE, id), {
+      day,
+      subjects,
+      seededAt: serverTimestamp(),
+    });
+  });
+  await batch.commit();
 }
