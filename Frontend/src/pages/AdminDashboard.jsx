@@ -46,73 +46,59 @@ const TYPE_LABELS = {
   achievement:    { label: 'Prestasi',        icon: Trophy,  color: 'text-amber-600 bg-amber-50' },
 };
 
-// ── Seed Data: X PPLG 2 (dari gambar jadwal) ────────────────────────────────
+// ── Seed Data: X PPLG 2 — Grouped slots + isEvent breaks ─────────────────
 const SCHEDULE_SEED = [
   {
     id: 'senin', day: 'Senin',
     subjects: [
-      { jamKe: 1, timeSlot: '07:30 - 08:10', name: 'PRO PPLG',    teacherCode: '33' },
-      { jamKe: 2, timeSlot: '08:10 - 08:50', name: 'PRO PPLG',    teacherCode: '33' },
-      { jamKe: 3, timeSlot: '08:50 - 09:30', name: 'PRO PPLG',    teacherCode: '33' },
-      { jamKe: 4, timeSlot: '10:00 - 10:40', name: 'PRO PPLG',    teacherCode: '33' },
-      { jamKe: 5, timeSlot: '10:40 - 11:20', name: 'PRO PPLG',    teacherCode: '33' },
-      { jamKe: 6, timeSlot: '11:20 - 12:00', name: 'PRO PPLG',    teacherCode: '33' },
-      { jamKe: 7, timeSlot: '13:00 - 13:40', name: 'ENGLISH',     teacherCode: '38' },
-      { jamKe: 8, timeSlot: '13:40 - 14:20', name: 'B.SUNDA',     teacherCode: '30' },
-      { jamKe: 9, timeSlot: '14:20 - 15:00', name: 'B.SUNDA',     teacherCode: '30' },
+      { timeSlot: '07:30 - 09:30', name: 'PRO PPLG',          teacherName: '', isEvent: false },
+      { timeSlot: '09:30 - 10:00', name: 'Istirahat',          teacherName: null, isEvent: true  },
+      { timeSlot: '10:00 - 12:00', name: 'PRO PPLG',          teacherName: '', isEvent: false },
+      { timeSlot: '12:00 - 13:00', name: 'Istirahat / ISOMA', teacherName: null, isEvent: true  },
+      { timeSlot: '13:00 - 15:00', name: 'PRO PPLG',          teacherName: '', isEvent: false },
     ],
   },
   {
     id: 'selasa', day: 'Selasa',
     subjects: [
-      { jamKe: 1, timeSlot: '07:30 - 08:10', name: 'IPAS',        teacherCode: '24' },
-      { jamKe: 2, timeSlot: '08:10 - 08:50', name: 'IPAS',        teacherCode: '24' },
-      { jamKe: 3, timeSlot: '08:50 - 09:30', name: 'IPAS',        teacherCode: '24' },
-      { jamKe: 4, timeSlot: '10:00 - 10:40', name: 'IPAS',        teacherCode: '24' },
-      { jamKe: 5, timeSlot: '10:40 - 11:20', name: 'IPAS',        teacherCode: '24' },
-      { jamKe: 6, timeSlot: '11:20 - 12:00', name: 'IPAS',        teacherCode: '24' },
-      { jamKe: 7, timeSlot: '13:00 - 13:40', name: 'B.INDO',      teacherCode: '10' },
-      { jamKe: 8, timeSlot: '13:40 - 14:20', name: 'B.INDO',      teacherCode: '10' },
-      { jamKe: 9, timeSlot: '14:20 - 15:00', name: 'B.INDO',      teacherCode: '10' },
+      { timeSlot: '07:30 - 08:10', name: 'PRO PPLG',          teacherName: '', isEvent: false },
+      { timeSlot: '08:10 - 09:30', name: 'IPAS',              teacherName: '', isEvent: false },
+      { timeSlot: '09:30 - 10:00', name: 'Istirahat',          teacherName: null, isEvent: true  },
+      { timeSlot: '10:00 - 12:00', name: 'IPAS',              teacherName: '', isEvent: false },
+      { timeSlot: '12:00 - 13:00', name: 'Istirahat / ISOMA', teacherName: null, isEvent: true  },
+      { timeSlot: '13:00 - 15:00', name: 'B. INDO',           teacherName: '', isEvent: false },
     ],
   },
   {
     id: 'rabu', day: 'Rabu',
     subjects: [
-      { jamKe: 1, timeSlot: '07:30 - 08:10', name: 'INFORMATIKA', teacherCode: '23' },
-      { jamKe: 2, timeSlot: '08:10 - 08:50', name: 'INFORMATIKA', teacherCode: '23' },
-      { jamKe: 3, timeSlot: '08:50 - 09:30', name: 'INFORMATIKA', teacherCode: '23' },
-      { jamKe: 4, timeSlot: '10:00 - 10:40', name: 'INFORMATIKA', teacherCode: '23' },
-      { jamKe: 5, timeSlot: '10:40 - 11:20', name: 'B.SUNDA',     teacherCode: '30' },
-      { jamKe: 6, timeSlot: '11:20 - 12:00', name: 'ENGLISH',     teacherCode: '19' },
-      { jamKe: 7, timeSlot: '13:00 - 13:40', name: 'PJOK',        teacherCode: '21' },
-      { jamKe: 8, timeSlot: '13:40 - 14:20', name: 'PJOK',        teacherCode: '21' },
-      { jamKe: 9, timeSlot: '14:20 - 15:00', name: 'PJOK',        teacherCode: '21' },
+      { timeSlot: '07:30 - 09:30', name: 'INFORMATIKA',       teacherName: '', isEvent: false },
+      { timeSlot: '09:30 - 10:00', name: 'Istirahat',          teacherName: null, isEvent: true  },
+      { timeSlot: '10:00 - 10:40', name: 'INFORMATIKA',       teacherName: '', isEvent: false },
+      { timeSlot: '10:40 - 11:20', name: 'B. SUNDA',          teacherName: '', isEvent: false },
+      { timeSlot: '11:20 - 12:00', name: 'ENGLISH',           teacherName: '', isEvent: false },
+      { timeSlot: '12:00 - 13:00', name: 'Istirahat / ISOMA', teacherName: null, isEvent: true  },
+      { timeSlot: '13:00 - 15:00', name: 'PJOK',              teacherName: '', isEvent: false },
     ],
   },
   {
     id: 'kamis', day: 'Kamis',
     subjects: [
-      { jamKe: 1, timeSlot: '07:30 - 08:10', name: 'SEJARAH',     teacherCode: '28' },
-      { jamKe: 2, timeSlot: '08:10 - 08:50', name: 'SEJARAH',     teacherCode: '28' },
-      { jamKe: 3, timeSlot: '08:50 - 09:30', name: 'B.SUNDA',     teacherCode: '30' },
-      { jamKe: 4, timeSlot: '10:00 - 10:40', name: 'SENBUD',      teacherCode: '26' },
-      { jamKe: 5, timeSlot: '10:40 - 11:20', name: 'SENBUD',      teacherCode: '26' },
-      { jamKe: 6, timeSlot: '11:20 - 12:00', name: 'ENGLISH',     teacherCode: '19' },
-      { jamKe: 7, timeSlot: '13:00 - 13:40', name: 'ENGLISH',     teacherCode: '19' },
-      { jamKe: 8, timeSlot: '13:40 - 14:20', name: 'PPKN',        teacherCode: '4'  },
-      { jamKe: 9, timeSlot: '14:20 - 15:00', name: 'PPKN',        teacherCode: '4'  },
+      { timeSlot: '07:30 - 08:50', name: 'SEJARAH',           teacherName: '', isEvent: false },
+      { timeSlot: '08:50 - 09:30', name: 'B. SUNDA',          teacherName: '', isEvent: false },
+      { timeSlot: '09:30 - 10:00', name: 'Istirahat',          teacherName: null, isEvent: true  },
+      { timeSlot: '10:00 - 11:20', name: 'SENBUD',            teacherName: '', isEvent: false },
+      { timeSlot: '11:20 - 13:40', name: 'ENGLISH',           teacherName: '', isEvent: false },
+      { timeSlot: '13:40 - 15:00', name: 'PPKN',              teacherName: '', isEvent: false },
     ],
   },
   {
     id: 'jumat', day: 'Jumat',
     subjects: [
-      { jamKe: 1, timeSlot: '07:30 - 08:10', name: 'PAI',         teacherCode: '2'  },
-      { jamKe: 2, timeSlot: '08:10 - 08:50', name: 'PAI',         teacherCode: '2'  },
-      { jamKe: 3, timeSlot: '08:50 - 09:30', name: 'PAI',         teacherCode: '2'  },
-      { jamKe: 4, timeSlot: '09:45 - 10:25', name: 'MTK',         teacherCode: '14' },
-      { jamKe: 5, timeSlot: '10:25 - 11:05', name: 'MTK',         teacherCode: '14' },
-      { jamKe: 6, timeSlot: '11:05 - 11:45', name: 'MTK',         teacherCode: '14' },
+      { timeSlot: '07:30 - 09:30', name: 'PAI',                teacherName: '', isEvent: false },
+      { timeSlot: '09:30 - 09:45', name: 'Istirahat',          teacherName: null, isEvent: true  },
+      { timeSlot: '09:45 - 11:45', name: 'MTK',               teacherName: '', isEvent: false },
+      { timeSlot: '11:45 - 13:00', name: 'Sholat Jumat & Pulang', teacherName: null, isEvent: true  },
     ],
   },
 ];
@@ -281,7 +267,7 @@ export default function AdminDashboard() {
   const handleAddRow = useCallback(() => {
     setEditSubjects(prev => [
       ...prev,
-      { jamKe: prev.length + 1, timeSlot: '', name: '', teacherCode: '' },
+      { timeSlot: '', name: '', teacherName: '', isEvent: false },
     ]);
   }, []);
 
@@ -711,48 +697,64 @@ export default function AdminDashboard() {
                     <table className="w-full text-sm border-collapse">
                       <thead>
                         <tr className="text-outlined text-xs border-b border-black/10">
-                          <th className="pb-2 text-left w-12">Jam</th>
                           <th className="pb-2 text-left w-36">Waktu</th>
-                          <th className="pb-2 text-left">Mata Pelajaran</th>
-                          <th className="pb-2 text-left w-24">Kode Guru</th>
+                          <th className="pb-2 text-left">Nama / Event</th>
+                          <th className="pb-2 text-left w-36">Nama Guru</th>
+                          <th className="pb-2 text-center w-20">Tipe</th>
                           <th className="pb-2 w-8" />
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-black/5">
                         {editSubjects.map((s, idx) => (
-                          <tr key={idx}>
+                          <tr key={idx} className={s.isEvent ? 'bg-amber-50/60' : ''}>
+                            {/* Waktu */}
                             <td className="py-2 pr-2">
                               <input
-                                type="number" min="1" max="12"
-                                value={s.jamKe}
-                                onChange={e => handleSubjectChange(idx, 'jamKe', Number(e.target.value))}
-                                className="w-12 px-2 py-1.5 rounded-lg border border-black/10 text-center text-xs focus:border-primary outline-none"
-                              />
-                            </td>
-                            <td className="py-2 pr-2">
-                              <input
-                                type="text" placeholder="07:30 - 08:10"
-                                value={s.timeSlot}
+                                type="text" placeholder="07:30 - 09:30"
+                                value={s.timeSlot ?? ''}
                                 onChange={e => handleSubjectChange(idx, 'timeSlot', e.target.value)}
                                 className="w-full px-2 py-1.5 rounded-lg border border-black/10 text-xs focus:border-primary outline-none font-mono"
                               />
                             </td>
+                            {/* Nama / Event */}
                             <td className="py-2 pr-2">
                               <input
-                                type="text" placeholder="Nama Mata Pelajaran"
-                                value={s.name}
+                                type="text"
+                                placeholder={s.isEvent ? 'Nama event (Istirahat…)' : 'Nama Mata Pelajaran'}
+                                value={s.name ?? ''}
                                 onChange={e => handleSubjectChange(idx, 'name', e.target.value)}
                                 className="w-full px-2 py-1.5 rounded-lg border border-black/10 text-xs focus:border-primary outline-none"
                               />
                             </td>
+                            {/* Nama Guru — disabled for events */}
                             <td className="py-2 pr-2">
-                              <input
-                                type="text" placeholder="Kode"
-                                value={s.teacherCode}
-                                onChange={e => handleSubjectChange(idx, 'teacherCode', e.target.value)}
-                                className="w-full px-2 py-1.5 rounded-lg border border-black/10 text-xs focus:border-primary outline-none"
-                              />
+                              {s.isEvent ? (
+                                <span className="block px-2 py-1.5 rounded-lg bg-black/5 text-[10px] text-outlined italic">
+                                  — event, no guru —
+                                </span>
+                              ) : (
+                                <input
+                                  type="text" placeholder="Nama guru..."
+                                  value={s.teacherName ?? ''}
+                                  onChange={e => handleSubjectChange(idx, 'teacherName', e.target.value)}
+                                  className="w-full px-2 py-1.5 rounded-lg border border-black/10 text-xs focus:border-primary outline-none"
+                                />
+                              )}
                             </td>
+                            {/* isEvent toggle */}
+                            <td className="py-2 pr-2 text-center">
+                              <button
+                                onClick={() => handleSubjectChange(idx, 'isEvent', !s.isEvent)}
+                                className={`text-[10px] font-bold px-2 py-1 rounded-lg transition-all ${
+                                  s.isEvent
+                                    ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                                    : 'bg-primary/10 text-primary hover:bg-primary/20'
+                                }`}
+                              >
+                                {s.isEvent ? 'EVENT' : 'PELAJARAN'}
+                              </button>
+                            </td>
+                            {/* Delete */}
                             <td className="py-2">
                               <button
                                 onClick={() => handleRemoveRow(idx)}

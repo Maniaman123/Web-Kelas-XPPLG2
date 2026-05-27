@@ -4,7 +4,7 @@ import useAuth from "../context/useAuth";
 import { subscribeToStudents } from "../utils/firestoreService";
 import BentoCard from "./BentoCard";
 import StudentCard from "./StudentCard";
-import ScheduleCard from "./ScheduleCard";
+import ScheduleTile from "./ScheduleTile";
 import StatsCard from "./StatsCard";
 import FeaturedProjectCard from "./FeaturedProjectCard";
 import CinematographyCard from "./CinematographyCard";
@@ -185,7 +185,7 @@ export default function BentoGrid() {
           enableBorderGlow
           enableTilt
         >
-          <ScheduleCard />
+          <ScheduleTile />
         </BentoCard>
       </div>
     </section>
