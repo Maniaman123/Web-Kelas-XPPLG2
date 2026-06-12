@@ -175,6 +175,19 @@ export async function getProjects() {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
+/**
+ * [REAL-TIME] Subscribe ke koleksi projects.
+ * Digunakan di Projects.jsx dan StatsCard.jsx untuk pembaruan instan.
+ * @param {Function} callback
+ * @returns {Function} unsubscribe
+ */
+export function subscribeToProjects(callback) {
+  return onSnapshot(collection(db, COL.PROJECTS), (snapshot) => {
+    const projects = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    callback(projects);
+  });
+}
+
 /** Tambah proyek baru (hanya Admin). */
 export async function addProject(data) {
   const ref = await addDoc(collection(db, COL.PROJECTS), {
@@ -198,6 +211,19 @@ export async function deleteProject(projectId) {
 export async function getAchievements() {
   const snap = await getDocs(collection(db, COL.ACHIEVEMENTS));
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+/**
+ * [REAL-TIME] Subscribe ke koleksi achievements.
+ * Digunakan di Achievements.jsx dan StatsCard.jsx untuk pembaruan instan.
+ * @param {Function} callback
+ * @returns {Function} unsubscribe
+ */
+export function subscribeToAchievements(callback) {
+  return onSnapshot(collection(db, COL.ACHIEVEMENTS), (snapshot) => {
+    const achievements = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    callback(achievements);
+  });
 }
 
 /** Tambah prestasi baru (hanya Admin). */

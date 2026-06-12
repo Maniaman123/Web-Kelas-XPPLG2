@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Users, FolderGit2, BookOpen, Trophy } from 'lucide-react';
-import { getStudents, getProjects, getAchievements } from '../utils/firestoreService';
+import {
+  subscribeToStudents,
+  subscribeToProjects,
+  subscribeToAchievements,
+  subscribeToSchedule,
+} from '../utils/firestoreService';
 
 function AnimatedCounter({ target, suffix }) {
   const [count, setCount] = useState(0);
@@ -29,33 +34,51 @@ function AnimatedCounter({ target, suffix }) {
 }
 
 export default function StatsCard() {
-  const [counts, setCounts] = useState({ pelajar: 0, proyek: 0, prestasi: 0 });
+  const [counts, setCounts] = useState({ pelajar: 0, proyek: 0, prestasi: 0, mataPelajaran: 0 });
 
   useEffect(() => {
-    async function loadStats() {
-      try {
-        const [studentsData, projectsData, achievementsData] = await Promise.all([
-          getStudents(),
-          getProjects(),
-          getAchievements()
-        ]);
-        setCounts({
-          pelajar: studentsData.length,
-          proyek: projectsData.length,
-          prestasi: achievementsData.length
-        });
-      } catch (err) {
-        console.error("Failed to load stats from Firestore:", err);
-      }
-    }
-    loadStats();
+    const unsubStudents = subscribeToStudents((students) => {
+      setCounts((prev) => ({ ...prev, pelajar: students.length }));
+    });
+
+    const unsubProjects = subscribeToProjects((projects) => {
+      setCounts((prev) => ({ ...prev, proyek: projects.length }));
+    });
+
+    const unsubAchievements = subscribeToAchievements((achievements) => {
+      setCounts((prev) => ({ ...prev, prestasi: achievements.length }));
+    });
+
+    const unsubSchedule = subscribeToSchedule((days) => {
+      const allSubjects = new Set();
+      days.forEach((dayDoc) => {
+        if (dayDoc.subjects) {
+          dayDoc.subjects.forEach((subject) => {
+            if (subject.name && !subject.isEvent) {
+              const normalized = subject.name.trim().toUpperCase();
+              if (normalized) {
+                allSubjects.add(normalized);
+              }
+            }
+          });
+        }
+      });
+      setCounts((prev) => ({ ...prev, mataPelajaran: allSubjects.size }));
+    });
+
+    return () => {
+      unsubStudents();
+      unsubProjects();
+      unsubAchievements();
+      unsubSchedule();
+    };
   }, []);
 
   const stats = [
-    { icon: Users,      label: 'Pelajar',        value: counts.pelajar,  suffix: '' },
-    { icon: FolderGit2, label: 'Proyek Aktif',   value: counts.proyek,   suffix: '' },
-    { icon: BookOpen,   label: 'Mata Pelajaran',  value: 5,             suffix: '' },
-    { icon: Trophy,     label: 'Prestasi',        value: counts.prestasi, suffix: '' },
+    { icon: Users,      label: 'Pelajar',        value: counts.pelajar,        suffix: '' },
+    { icon: FolderGit2, label: 'Proyek Aktif',   value: counts.proyek,         suffix: '' },
+    { icon: BookOpen,   label: 'Mata Pelajaran',  value: counts.mataPelajaran,  suffix: '' },
+    { icon: Trophy,     label: 'Prestasi',        value: counts.prestasi,       suffix: '' },
   ];
 
   return (

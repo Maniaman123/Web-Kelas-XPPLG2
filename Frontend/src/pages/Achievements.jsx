@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import useAuth from '../context/useAuth';
-import { getAchievements, subscribeToPending, submitPending } from '../utils/firestoreService';
+import { subscribeToAchievements, subscribeToPending, submitPending } from '../utils/firestoreService';
 import { Trophy, Plus, Clock, X, Upload } from 'lucide-react';
 
 const MAX_FILE_MB = 2;
@@ -22,23 +22,20 @@ export default function Achievements() {
   const fileInputRef                    = useRef(null);
 
   useEffect(() => {
-    async function loadAchievements() {
-      try {
-        const approved = await getAchievements();
-        setAchievements(approved);
-      } catch (err) {
-        console.error("Failed to load approved achievements:", err);
-      }
-    }
-    loadAchievements();
+    const unsubAchievements = subscribeToAchievements((approved) => {
+      setAchievements(approved);
+    });
 
-    const unsubscribe = subscribeToPending((items) => {
+    const unsubPending = subscribeToPending((items) => {
       const achievementsPending = items.filter(p => p.type === 'achievement');
       setPending(achievementsPending);
       setLoading(false);
     });
 
-    return unsubscribe;
+    return () => {
+      unsubAchievements();
+      unsubPending();
+    };
   }, []);
 
   const handleFileChange = (e) => {

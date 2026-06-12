@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import useAuth from '../context/useAuth';
-import { getProjects, subscribeToPending, submitPending } from '../utils/firestoreService';
+import { subscribeToProjects, subscribeToPending, submitPending } from '../utils/firestoreService';
 import { Rocket, Plus, ExternalLink, Clock, X, Upload } from 'lucide-react';
 
 const MAX_FILE_MB = 2;
@@ -22,23 +22,20 @@ export default function Projects() {
   const fileInputRef                  = useRef(null);
 
   useEffect(() => {
-    async function loadProjects() {
-      try {
-        const approved = await getProjects();
-        setProjects(approved);
-      } catch (err) {
-        console.error("Failed to load approved projects:", err);
-      }
-    }
-    loadProjects();
+    const unsubProjects = subscribeToProjects((approved) => {
+      setProjects(approved);
+    });
 
-    const unsubscribe = subscribeToPending((items) => {
+    const unsubPending = subscribeToPending((items) => {
       const projectPending = items.filter(p => p.type === 'project');
       setPending(projectPending);
       setLoading(false);
     });
 
-    return unsubscribe;
+    return () => {
+      unsubProjects();
+      unsubPending();
+    };
   }, []);
 
   const handleFileChange = (e) => {
