@@ -6,8 +6,9 @@ import {
   subscribeToMyPending,
   submitPending,
   deleteCinematography,
+  updateCinematography,
 } from '../utils/firestoreService';
-import { Camera, Plus, Play, Clock, Upload, X, Trash2, AlertTriangle } from 'lucide-react';
+import { Camera, Plus, Play, Clock, Upload, X, Trash2, AlertTriangle, Pencil } from 'lucide-react';
 
 const MAX_FILE_MB = 2;
 
@@ -71,6 +72,158 @@ function DeleteConfirmDialog({ itemTitle, onConfirm, onCancel, isDeleting }) {
   );
 }
 
+// ── Edit Dialog ───────────────────────────────────────────────────────────────
+function EditCinemaDialog({ item, onSave, onCancel, isSaving }) {
+  const [title, setTitle]       = useState(item.title || '');
+  const [mediaType, setMediaType] = useState(item.type || 'photo');
+  const [photos, setPhotos]     = useState(item.photos || (item.type === 'photo' && item.url ? [item.url] : []));
+  const [videoUrl, setVideoUrl] = useState(item.type === 'video' ? (item.url || '') : '');
+  const [fileErr, setFileErr]   = useState('');
+  const fileRef                 = useRef(null);
+
+  // reset konten media saat tipe diganti
+  const handleTypeChange = (newType) => {
+    setMediaType(newType);
+    setPhotos([]);
+    setVideoUrl('');
+    setFileErr('');
+  };
+
+  const handleFiles = (e) => {
+    setFileErr('');
+    Array.from(e.target.files).forEach((f) => {
+      if (f.size > MAX_FILE_MB * 1024 * 1024) {
+        setFileErr(`File diabaikan, ukurannya lebih dari ${MAX_FILE_MB}MB.`);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (ev) => setPhotos((prev) => [...prev, ev.target.result]);
+      reader.readAsDataURL(f);
+    });
+    if (fileRef.current) fileRef.current.value = '';
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (mediaType === 'photo' && photos.length === 0) {
+      setFileErr('Tambahkan minimal satu foto.');
+      return;
+    }
+    if (mediaType === 'video' && !videoUrl.trim()) {
+      setFileErr('Masukkan URL video YouTube.');
+      return;
+    }
+    onSave({
+      title,
+      type: mediaType,
+      url: mediaType === 'photo' ? photos[0] : videoUrl.trim(),
+      photos: mediaType === 'photo' ? photos : [],
+    });
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+      onClick={onCancel}
+    >
+      <motion.div
+        initial={{ scale: 0.92, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.92, opacity: 0, y: 20 }}
+        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+        className="bg-white rounded-3xl shadow-2xl p-7 w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-2 mb-5">
+          <Pencil className="w-4 h-4 text-primary" />
+          <h3 className="text-base font-bold text-inverted">Edit Karya</h3>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-inverted mb-1">Judul Karya</label>
+            <input
+              type="text" value={title} onChange={(e) => setTitle(e.target.value)}
+              className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary outline-none bg-white text-sm"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-inverted mb-1">Jenis Media</label>
+            <select
+              value={mediaType}
+              onChange={(e) => handleTypeChange(e.target.value)}
+              className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary outline-none bg-white text-sm"
+            >
+              <option value="photo">Foto</option>
+              <option value="video">Video (URL YouTube)</option>
+            </select>
+          </div>
+
+          {mediaType === 'photo' ? (
+            <div>
+              <label className="block text-sm font-medium text-inverted mb-1">
+                Upload Foto <span className="text-outlined font-normal">(maks. {MAX_FILE_MB}MB per foto)</span>
+              </label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {photos.map((ph, i) => (
+                  <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 group border border-black/10">
+                    <img src={ph} alt="foto" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setPhotos((p) => p.filter((_, idx) => idx !== i))}
+                      className="absolute top-1 right-1 bg-black/50 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-500 cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+                <label className="flex flex-col items-center justify-center w-20 h-20 border-2 border-dashed border-black/15 rounded-xl cursor-pointer hover:bg-black/5 shrink-0">
+                  <Upload className="w-4 h-4 text-outlined" />
+                  <span className="text-[10px] text-outlined mt-1">Tambah</span>
+                  <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFiles} />
+                </label>
+              </div>
+              {fileErr && <p className="text-xs text-red-500">{fileErr}</p>}
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-inverted mb-1">URL Video (YouTube)</label>
+              <input
+                type="url" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)}
+                placeholder="https://youtube.com/watch?v=..."
+                className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary outline-none bg-white text-sm"
+              />
+              {fileErr && <p className="text-xs text-red-500 mt-1">{fileErr}</p>}
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-1">
+            <button
+              type="button" onClick={onCancel} disabled={isSaving}
+              className="flex-1 px-4 py-2.5 rounded-xl border border-black/10 text-outlined font-medium hover:bg-black/5 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              Batal
+            </button>
+            <button
+              type="submit" disabled={isSaving}
+              className="flex-1 px-4 py-2.5 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors cursor-pointer disabled:opacity-70 flex items-center justify-center gap-2"
+            >
+              {isSaving && <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
+              {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 // ── Main Component ───────────────────────────────────────────────────────────
 export default function Cinematography() {
   const { user, role, isAuthenticated } = useAuth();
@@ -85,12 +238,13 @@ export default function Cinematography() {
   const [videoUrl, setVideoUrl]         = useState('');
   const [fileError, setFileError]       = useState('');
   const [submitted, setSubmitted]       = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState(null); // { id, title }
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting]     = useState(false);
+  const [editTarget, setEditTarget]     = useState(null);
+  const [isSaving, setIsSaving]         = useState(false);
   const fileInputRef                    = useRef(null);
 
   useEffect(() => {
-    // Switch from one-time fetch to real-time subscription
     const unsubMedia = subscribeToCinematography((approved) => {
       setMedia(approved);
       setLoading(false);
@@ -106,7 +260,6 @@ export default function Cinematography() {
     };
   }, [user?.uid]);
 
-  // How many times THIS user has uploaded (approved + pending)
   const myApproved = media.filter((m) => m.studentId === user?.id);
   const myPending  = pending.filter((p) => p.studentId === user?.id);
   const myTotal    = myApproved.length + myPending.length;
@@ -178,6 +331,21 @@ export default function Cinematography() {
       alert('Gagal menghapus karya. Kamu mungkin tidak memiliki izin.');
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  // ── Edit ───────────────────────────────────────────────────────────────────
+  const handleEditSave = async (data) => {
+    if (!editTarget) return;
+    setIsSaving(true);
+    try {
+      await updateCinematography(editTarget.id, data);
+      setEditTarget(null);
+    } catch (err) {
+      console.error('Gagal update karya:', err);
+      alert('Gagal menyimpan perubahan. Coba lagi.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -326,7 +494,7 @@ export default function Cinematography() {
         </div>
       )}
 
-      {/* Approved gallery with AnimatePresence */}
+      {/* Galeri karya yang sudah disetujui */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {loading ? (
           Array.from({ length: 6 }).map((_, i) => (
@@ -339,7 +507,7 @@ export default function Cinematography() {
         ) : (
           <AnimatePresence mode="popLayout">
             {media.map((item) => {
-              const canDelete = role === 'admin' || user?.uid === item.userId;
+              const canManage = role === 'admin' || user?.uid === item.userId;
               return (
                 <motion.div
                   key={item.id}
@@ -350,18 +518,27 @@ export default function Cinematography() {
                   transition={{ duration: 0.25 }}
                   className="bg-white p-6 rounded-3xl shadow-sm border border-black/5 flex flex-col hover:shadow-md transition-shadow group relative"
                 >
-                  {/* Delete button */}
-                  {canDelete && (
-                    <button
-                      onClick={() => setDeleteTarget({ id: item.id, title: item.title })}
-                      title="Hapus karya"
-                      className="absolute top-4 right-4 p-2 rounded-xl text-outlined hover:text-rose-600 hover:bg-rose-50 transition-all opacity-0 group-hover:opacity-100 cursor-pointer z-10"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                  {/* Tombol edit & hapus */}
+                  {canManage && (
+                    <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-all z-10">
+                      <button
+                        onClick={() => setEditTarget(item)}
+                        title="Edit karya"
+                        className="p-2 rounded-xl text-outlined hover:text-primary hover:bg-primary/10 transition-all cursor-pointer"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setDeleteTarget({ id: item.id, title: item.title })}
+                        title="Hapus karya"
+                        className="p-2 rounded-xl text-outlined hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   )}
 
-                  <h3 className="text-lg font-bold text-inverted mb-2 pr-8">{item.title}</h3>
+                  <h3 className="text-lg font-bold text-inverted mb-2 pr-20">{item.title}</h3>
                   {item.type === 'photo' ? (
                     item.photos && item.photos.length > 0 ? (
                       <div className="flex overflow-x-auto gap-2 mb-3 pb-2 scrollbar-hide">
@@ -396,6 +573,18 @@ export default function Cinematography() {
             onConfirm={handleDeleteConfirm}
             onCancel={() => !isDeleting && setDeleteTarget(null)}
             isDeleting={isDeleting}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Edit Dialog Portal */}
+      <AnimatePresence>
+        {editTarget && (
+          <EditCinemaDialog
+            item={editTarget}
+            onSave={handleEditSave}
+            onCancel={() => !isSaving && setEditTarget(null)}
+            isSaving={isSaving}
           />
         )}
       </AnimatePresence>

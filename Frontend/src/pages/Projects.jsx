@@ -6,8 +6,9 @@ import {
   subscribeToMyPending,
   submitPending,
   deleteProject,
+  updateProject,
 } from '../utils/firestoreService';
-import { Rocket, Plus, ExternalLink, Clock, X, Upload, Trash2, AlertTriangle } from 'lucide-react';
+import { Rocket, Plus, ExternalLink, Clock, X, Upload, Trash2, AlertTriangle, Pencil } from 'lucide-react';
 
 const MAX_FILE_MB = 2;
 
@@ -71,23 +72,149 @@ function DeleteConfirmDialog({ itemTitle, onConfirm, onCancel, isDeleting }) {
   );
 }
 
+// ── Edit Dialog ───────────────────────────────────────────────────────────────
+function EditProjectDialog({ item, onSave, onCancel, isSaving }) {
+  const [title, setTitle]     = useState(item.title || '');
+  const [desc, setDesc]       = useState(item.description || '');
+  const [link, setLink]       = useState(item.link || '');
+  const [photos, setPhotos]   = useState(item.photos || []);
+  const [fileErr, setFileErr] = useState('');
+  const fileRef               = useRef(null);
+
+  const handleFiles = (e) => {
+    setFileErr('');
+    Array.from(e.target.files).forEach((f) => {
+      if (f.size > MAX_FILE_MB * 1024 * 1024) {
+        setFileErr(`File diabaikan, ukurannya lebih dari ${MAX_FILE_MB}MB.`);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (ev) => setPhotos((prev) => [...prev, ev.target.result]);
+      reader.readAsDataURL(f);
+    });
+    if (fileRef.current) fileRef.current.value = '';
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+      onClick={onCancel}
+    >
+      <motion.div
+        initial={{ scale: 0.92, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.92, opacity: 0, y: 20 }}
+        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+        className="bg-white rounded-3xl shadow-2xl p-7 w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-2 mb-5">
+          <Pencil className="w-4 h-4 text-primary" />
+          <h3 className="text-base font-bold text-inverted">Edit Proyek</h3>
+        </div>
+
+        <form
+          onSubmit={(e) => { e.preventDefault(); onSave({ title, description: desc, link, photos }); }}
+          className="space-y-4"
+        >
+          <div>
+            <label className="block text-sm font-medium text-inverted mb-1">Judul Proyek</label>
+            <input
+              type="text" value={title} onChange={(e) => setTitle(e.target.value)}
+              className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary outline-none bg-white text-sm"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-inverted mb-1">Deskripsi</label>
+            <textarea
+              value={desc} onChange={(e) => setDesc(e.target.value)} rows={3}
+              className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary outline-none resize-none bg-white text-sm"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-inverted mb-1">Link Demo / GitHub (Opsional)</label>
+            <input
+              type="url" value={link} onChange={(e) => setLink(e.target.value)}
+              placeholder="https://..."
+              className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary outline-none bg-white text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-inverted mb-1">
+              Foto Dokumentasi{' '}
+              <span className="font-normal text-outlined">(maks. {MAX_FILE_MB}MB per foto)</span>
+            </label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {photos.map((ph, i) => (
+                <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 group border border-black/10">
+                  <img src={ph} alt="foto" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setPhotos((p) => p.filter((_, idx) => idx !== i))}
+                    className="absolute top-1 right-1 bg-black/50 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-500 cursor-pointer"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+              <label className="flex flex-col items-center justify-center w-20 h-20 border-2 border-dashed border-black/15 rounded-xl cursor-pointer hover:bg-black/5 shrink-0">
+                <Upload className="w-4 h-4 text-outlined" />
+                <span className="text-[10px] text-outlined mt-1">Tambah</span>
+                <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFiles} />
+              </label>
+            </div>
+            {fileErr && <p className="text-xs text-red-500">{fileErr}</p>}
+          </div>
+
+          <div className="flex gap-3 pt-1">
+            <button
+              type="button" onClick={onCancel} disabled={isSaving}
+              className="flex-1 px-4 py-2.5 rounded-xl border border-black/10 text-outlined font-medium hover:bg-black/5 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              Batal
+            </button>
+            <button
+              type="submit" disabled={isSaving}
+              className="flex-1 px-4 py-2.5 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors cursor-pointer disabled:opacity-70 flex items-center justify-center gap-2"
+            >
+              {isSaving && <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
+              {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 // ── Main Component ───────────────────────────────────────────────────────────
 export default function Projects() {
   const { user, role, isAuthenticated } = useAuth();
 
-  const [projects, setProjects]             = useState([]);
-  const [pending, setPending]               = useState([]);
-  const [loading, setLoading]               = useState(true);
-  const [showAddForm, setShowAddForm]       = useState(false);
-  const [submitted, setSubmitted]           = useState(false);
-  const [title, setTitle]                   = useState('');
-  const [description, setDescription]       = useState('');
-  const [link, setLink]                     = useState('');
-  const [photos, setPhotos]                 = useState([]);
-  const [fileError, setFileError]           = useState('');
-  const [deleteTarget, setDeleteTarget]     = useState(null); // { id, title }
-  const [isDeleting, setIsDeleting]         = useState(false);
-  const fileInputRef                        = useRef(null);
+  const [projects, setProjects]         = useState([]);
+  const [pending, setPending]           = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [showAddForm, setShowAddForm]   = useState(false);
+  const [submitted, setSubmitted]       = useState(false);
+  const [title, setTitle]               = useState('');
+  const [description, setDescription]   = useState('');
+  const [link, setLink]                 = useState('');
+  const [photos, setPhotos]             = useState([]);
+  const [fileError, setFileError]       = useState('');
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [isDeleting, setIsDeleting]     = useState(false);
+  const [editTarget, setEditTarget]     = useState(null);
+  const [isSaving, setIsSaving]         = useState(false);
+  const fileInputRef                    = useRef(null);
 
   useEffect(() => {
     const unsubProjects = subscribeToProjects((approved) => {
@@ -161,6 +288,21 @@ export default function Projects() {
       alert('Gagal menghapus proyek. Kamu mungkin tidak memiliki izin.');
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  // ── Edit ───────────────────────────────────────────────────────────────────
+  const handleEditSave = async (data) => {
+    if (!editTarget) return;
+    setIsSaving(true);
+    try {
+      await updateProject(editTarget.id, data);
+      setEditTarget(null);
+    } catch (err) {
+      console.error('Gagal update proyek:', err);
+      alert('Gagal menyimpan perubahan. Coba lagi.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -275,7 +417,7 @@ export default function Projects() {
         </div>
       )}
 
-      {/* Approved projects grid with AnimatePresence */}
+      {/* Grid proyek yang sudah disetujui */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {loading ? (
           Array.from({ length: 6 }).map((_, i) => (
@@ -288,7 +430,7 @@ export default function Projects() {
         ) : (
           <AnimatePresence mode="popLayout">
             {projects.map((project) => {
-              const canDelete = role === 'admin' || user?.uid === project.userId;
+              const canManage = role === 'admin' || user?.uid === project.userId;
               return (
                 <motion.div
                   key={project.id}
@@ -299,18 +441,27 @@ export default function Projects() {
                   transition={{ duration: 0.25 }}
                   className="bg-white p-6 rounded-3xl shadow-sm border border-black/5 flex flex-col hover:shadow-md transition-shadow group relative"
                 >
-                  {/* Delete button — shown only to authorized users */}
-                  {canDelete && (
-                    <button
-                      onClick={() => setDeleteTarget({ id: project.id, title: project.title })}
-                      title="Hapus proyek"
-                      className="absolute top-4 right-4 p-2 rounded-xl text-outlined hover:text-rose-600 hover:bg-rose-50 transition-all opacity-0 group-hover:opacity-100 cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                  {/* Tombol edit & hapus — muncul saat hover */}
+                  {canManage && (
+                    <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                      <button
+                        onClick={() => setEditTarget(project)}
+                        title="Edit proyek"
+                        className="p-2 rounded-xl text-outlined hover:text-primary hover:bg-primary/10 transition-all cursor-pointer"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setDeleteTarget({ id: project.id, title: project.title })}
+                        title="Hapus proyek"
+                        className="p-2 rounded-xl text-outlined hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   )}
 
-                  <h3 className="text-lg font-bold text-inverted mb-2 pr-8">{project.title}</h3>
+                  <h3 className="text-lg font-bold text-inverted mb-2 pr-20">{project.title}</h3>
                   {project.photos && project.photos.length > 0 && (
                     <div className="flex overflow-x-auto gap-2 mb-3 pb-2 scrollbar-hide">
                       {project.photos.map((ph, idx) => (
@@ -345,6 +496,18 @@ export default function Projects() {
             onConfirm={handleDeleteConfirm}
             onCancel={() => !isDeleting && setDeleteTarget(null)}
             isDeleting={isDeleting}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Edit Dialog Portal */}
+      <AnimatePresence>
+        {editTarget && (
+          <EditProjectDialog
+            item={editTarget}
+            onSave={handleEditSave}
+            onCancel={() => !isSaving && setEditTarget(null)}
+            isSaving={isSaving}
           />
         )}
       </AnimatePresence>

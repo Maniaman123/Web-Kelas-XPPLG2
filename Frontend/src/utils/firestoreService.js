@@ -273,6 +273,24 @@ export async function deleteProject(projectId) {
   }
 }
 
+/**
+ * Update proyek yang sudah disetujui.
+ * Boleh dipanggil oleh pemilik (userId) atau admin.
+ * @param {string} projectId
+ * @param {Object} data - field yang diubah
+ */
+export async function updateProject(projectId, data) {
+  try {
+    await updateDoc(doc(db, COL.PROJECTS, projectId), {
+      ...data,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (err) {
+    console.error('[firestoreService] updateProject gagal:', err);
+    throw err;
+  }
+}
+
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ACHIEVEMENTS COLLECTION
@@ -321,6 +339,24 @@ export async function deleteAchievement(achievementId) {
   }
 }
 
+/**
+ * Update prestasi yang sudah disetujui.
+ * Boleh dipanggil oleh pemilik (userId) atau admin.
+ * @param {string} achievementId
+ * @param {Object} data
+ */
+export async function updateAchievement(achievementId, data) {
+  try {
+    await updateDoc(doc(db, COL.ACHIEVEMENTS, achievementId), {
+      ...data,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (err) {
+    console.error('[firestoreService] updateAchievement gagal:', err);
+    throw err;
+  }
+}
+
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CINEMATOGRAPHY COLLECTION
@@ -365,6 +401,24 @@ export async function deleteCinematography(id) {
     await deleteDoc(doc(db, COL.CINEMATOGRAPHY, id));
   } catch (err) {
     console.error('[firestoreService] deleteCinematography gagal:', err);
+    throw err;
+  }
+}
+
+/**
+ * Update item sinematografi yang sudah disetujui.
+ * Boleh dipanggil oleh pemilik (userId) atau admin.
+ * @param {string} id
+ * @param {Object} data
+ */
+export async function updateCinematography(id, data) {
+  try {
+    await updateDoc(doc(db, COL.CINEMATOGRAPHY, id), {
+      ...data,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (err) {
+    console.error('[firestoreService] updateCinematography gagal:', err);
     throw err;
   }
 }
