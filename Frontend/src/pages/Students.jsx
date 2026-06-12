@@ -132,8 +132,12 @@ function DevCard({ student }) {
 
       {/* Avatar + name */}
       <div className="flex items-center gap-3 mb-3 pr-8">
-        <div className={`w-11 h-11 rounded-xl ${avatarClass} flex items-center justify-center text-white text-sm font-bold shrink-0`}>
-          {initials}
+        <div className={`w-11 h-11 rounded-xl ${avatarClass} flex items-center justify-center text-white text-sm font-bold shrink-0 overflow-hidden`}>
+          {student.avatarUrl ? (
+            <img src={student.avatarUrl} alt={student.name} className="w-full h-full object-cover" />
+          ) : (
+            initials
+          )}
         </div>
         <div className="min-w-0">
           <p className="text-sm font-bold leading-tight truncate" style={{ color: TEAL }}>

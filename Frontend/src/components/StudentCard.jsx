@@ -33,9 +33,13 @@ export default function StudentCard({ student, currentUser }) {
       {/* Header row */}
       <div className="flex items-center gap-3 mb-3">
         <div
-          className={`w-11 h-11 rounded-xl ${student.avatarColor || 'bg-slate-400'} flex items-center justify-center text-white text-sm font-bold shadow-sm shrink-0`}
+          className={`w-11 h-11 rounded-xl ${student.avatarColor || 'bg-slate-400'} flex items-center justify-center text-white text-sm font-bold shadow-sm shrink-0 overflow-hidden`}
         >
-          {student.initials}
+          {student.avatarUrl ? (
+            <img src={student.avatarUrl} alt={student.name} className="w-full h-full object-cover" />
+          ) : (
+            student.initials
+          )}
         </div>
         <div className="min-w-0 pr-6">
           <p className="text-sm font-bold text-primary truncate">{student.name}</p>

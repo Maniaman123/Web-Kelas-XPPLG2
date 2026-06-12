@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Edit3, Save, ExternalLink } from 'lucide-react';
-import { updateStudentProfile } from '../utils/firestoreService';
-import { getInitials, roles } from '../data/students';
+import { X, Edit3, ExternalLink, Globe } from 'lucide-react';
+import { getInitials } from '../data/students';
 import useAuth from '../context/useAuth';
+import ProfileForm from './ProfileForm';
 
 // ── Theme ──────────────────────────────────────────────────────
 const TEAL  = '#243B3C';
@@ -26,80 +26,21 @@ const GithubIcon = ({ className, style }) => (
   </svg>
 );
 
-// ── Small input/textarea helpers ───────────────────────────────
-const Input = ({ label, value, onChange, placeholder }) => (
-  <div className="flex flex-col gap-1">
-    <label className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: `${TEAL}80` }}>
-      {label}
-    </label>
-    <input
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      placeholder={placeholder}
-      className="w-full px-3 py-2 rounded-xl text-sm outline-none transition-all"
-      style={{
-        background: `${TEAL}0d`,
-        border: `1.5px solid ${TEAL}30`,
-        color: TEAL,
-      }}
-      onFocus={e  => e.target.style.borderColor = `${TEAL}80`}
-      onBlur={e   => e.target.style.borderColor = `${TEAL}30`}
-    />
-  </div>
-);
-
-const Textarea = ({ label, value, onChange, placeholder }) => (
-  <div className="flex flex-col gap-1">
-    <label className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: `${TEAL}80` }}>
-      {label}
-    </label>
-    <textarea
-      rows={4}
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      placeholder={placeholder}
-      className="w-full px-3 py-2 rounded-xl text-sm outline-none resize-none transition-all"
-      style={{
-        background: `${TEAL}0d`,
-        border: `1.5px solid ${TEAL}30`,
-        color: TEAL,
-      }}
-      onFocus={e  => e.target.style.borderColor = `${TEAL}80`}
-      onBlur={e   => e.target.style.borderColor = `${TEAL}30`}
-    />
-  </div>
-);
-
 // ── Main Modal ─────────────────────────────────────────────────
 export default function StudentModal({ student, onClose, onSave, layoutId }) {
   const { user, isAuthenticated } = useAuth();
 
   // ── Keamanan Self-Edit: hanya pemilik yang bisa edit ────────────────────
-  // user.id = Firebase UID; student.userId = Firebase UID pemilik profil.
-  // Pencocokan ini IDENTIK dengan logika LocalStorage sebelumnya.
   const canEdit = isAuthenticated && user?.id === student.userId;
 
   const [editing, setEditing]   = useState(false);
   const [saved,   setSaved]     = useState(false);
 
-  // Derive initial form values from student prop.
-  // useMemo (not useState+useEffect) avoids the cascading-render anti-pattern.
-  const initialForm = useMemo(() => ({
-    name:   student.name   || '',
-    about:  student.about  || '',
-    ig:     student.ig     || '',
-    github: student.github || '',
-    role:   student.role   || null,
-  }), [student.id, student.name, student.about, student.ig, student.github, student.role]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const [form, setForm] = useState(initialForm);
-
-  // Reset form & editing state whenever the displayed student changes
+  // Reset editing state whenever the displayed student changes
   useEffect(() => {
-    setForm(initialForm);
     setEditing(false);
     setSaved(false);
-  }, [student.id]); // intentionally only reset on student ID change, not every field update
+  }, [student.id]);
 
   // Close on Escape
   useEffect(() => {
@@ -108,37 +49,23 @@ export default function StudentModal({ student, onClose, onSave, layoutId }) {
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  // ── Simpan ke Firestore ─────────────────────────────────────────────────
-  // updateStudentProfile melakukan partial update (updateDoc) sehingga field
-  // lain (absentNumber, gender, dll.) tidak tertimpa.
-  // onSave dipanggil untuk optimistic update pada grid SEBELUM onSnapshot tiba.
-  const handleSave = async () => {
-    try {
-      await updateStudentProfile(student.id, {
-        name:   form.name,
-        about:  form.about,
-        ig:     form.ig,
-        github: form.github,
-        role:   form.role,
-      });
-      onSave({ ...student, ...form });  // optimistic UI
-      setSaved(true);
-      setEditing(false);
-      setTimeout(() => setSaved(false), 2500);
-    } catch (err) {
-      console.error('[StudentModal] Gagal menyimpan profil:', err);
-      // TODO: tampilkan toast error jika diperlukan
+  const handleFormSuccess = (updatedStudent) => {
+    if (onSave) {
+      onSave(updatedStudent); // optimistic UI update
     }
+    setSaved(true);
+    setEditing(false);
+    setTimeout(() => setSaved(false), 2500);
   };
 
   const initials    = student.initials || getInitials(student.name);
   const avatarClass = student.avatarColor || 'bg-teal-600';
 
-  const igHref = form.ig
-    ? (form.ig.startsWith('http') ? form.ig : `https://instagram.com/${form.ig}`)
+  const igHref = student.ig
+    ? (student.ig.startsWith('http') ? student.ig : `https://instagram.com/${student.ig}`)
     : null;
-  const ghHref = form.github
-    ? (form.github.startsWith('http') ? form.github : `https://github.com/${form.github}`)
+  const ghHref = student.github
+    ? (student.github.startsWith('http') ? student.github : `https://github.com/${student.github}`)
     : null;
 
   return (
@@ -170,150 +97,123 @@ export default function StudentModal({ student, onClose, onSave, layoutId }) {
           {/* Top teal accent strip */}
           <div className="h-1.5 w-full" style={{ background: TEAL }} />
 
-          <div className="p-6 sm:p-8 flex flex-col gap-5" style={{ color: TEAL }}>
+          <div className="p-6 sm:p-8 flex flex-col gap-5 max-h-[90vh] overflow-y-auto" style={{ color: TEAL }}>
 
             {/* Close button */}
             <button
               onClick={onClose}
-              className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:opacity-70"
+              className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:opacity-70 cursor-pointer"
               style={{ background: `${TEAL}15` }}
             >
               <X className="w-4 h-4" style={{ color: TEAL }} />
             </button>
 
-            {/* ── Header ── */}
-            <div className="flex items-center gap-4">
-              <div className={`w-16 h-16 rounded-2xl ${avatarClass} flex items-center justify-center text-white text-xl font-extrabold shrink-0`}>
-                {initials}
+            {editing ? (
+              <div className="pt-2">
+                <h2 className="text-lg font-extrabold mb-4" style={{ color: TEAL }}>
+                  Edit Profil Saya
+                </h2>
+                <ProfileForm
+                  student={student}
+                  onSuccess={handleFormSuccess}
+                  onCancel={() => setEditing(false)}
+                  showCancel={true}
+                />
               </div>
-              <div className="flex-1 min-w-0">
-                {editing ? (
-                  <Input label="Nama" value={form.name}
-                    onChange={v => setForm(f => ({ ...f, name: v }))}
-                    placeholder="Nama lengkap" />
-                ) : (
-                  <h2 className="text-xl font-extrabold leading-tight" style={{ color: TEAL }}>
-                    {form.name}
-                  </h2>
-                )}
-                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                  {student.absentNumber && (
-                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg"
-                      style={{ background: `${TEAL}15`, color: TEAL }}>
-                      #{student.absentNumber}
-                    </span>
-                  )}
-                  <span className="text-[10px] font-medium px-2.5 py-1 rounded-lg"
-                    style={{ background: `${TEAL}15`, color: TEAL }}>
-                    {student.gender === 'L' ? 'Laki-Laki' : 'Perempuan'}
+            ) : (
+              <>
+                {/* ── Header ── */}
+                <div className="flex items-center gap-4">
+                  <div className={`w-16 h-16 rounded-2xl ${avatarClass} flex items-center justify-center text-white text-xl font-extrabold shrink-0 overflow-hidden shadow-sm`}>
+                    {student.avatarUrl ? (
+                      <img src={student.avatarUrl} alt={student.name} className="w-full h-full object-cover" />
+                    ) : (
+                      initials
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-xl font-extrabold leading-tight" style={{ color: TEAL }}>
+                      {student.name}
+                    </h2>
+                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                      {student.absentNumber && (
+                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-lg"
+                          style={{ background: `${TEAL}15`, color: TEAL }}>
+                          #{student.absentNumber}
+                        </span>
+                      )}
+                      <span className="text-[10px] font-medium px-2.5 py-1 rounded-lg"
+                        style={{ background: `${TEAL}15`, color: TEAL }}>
+                        {student.gender === 'L' ? 'Laki-Laki' : 'Perempuan'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Role ── */}
+                {student.role && (
+                  <span className={`self-start px-3 py-1.5 rounded-xl text-xs font-semibold ${student.role.color}`}>
+                    {student.role.label}
                   </span>
-                </div>
-              </div>
-            </div>
-
-            {/* ── Role ── */}
-            {editing ? (
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: `${TEAL}80` }}>
-                  Role / Tech Stack
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {roles.map(r => (
-                    <button key={r.label}
-                      onClick={() => setForm(f => ({ ...f, role: r }))}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${r.color}`}
-                      style={{ outline: form.role?.label === r.label ? `2px solid ${TEAL}` : 'none', outlineOffset: '2px' }}>
-                      {r.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              form.role && (
-                <span className={`self-start px-3 py-1.5 rounded-xl text-xs font-semibold ${form.role.color}`}>
-                  {form.role.label}
-                </span>
-              )
-            )}
-
-            {/* ── About — no line-clamp, full text, max 200 words ── */}
-            {editing ? (
-              <Textarea label="About Me" value={form.about}
-                onChange={v => setForm(f => ({ ...f, about: v }))}
-                placeholder="Ceritakan tentang dirimu..." />
-            ) : (
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5"
-                  style={{ color: `${TEAL}80` }}>About Me</p>
-                <p className="text-sm leading-relaxed"
-                  style={{ color: `${TEAL}cc`, wordBreak: 'break-word' }}>
-                  {form.about
-                    ? form.about.split(' ').slice(0, 200).join(' ')
-                    : <span style={{ color: `${TEAL}50` }}>Belum ada deskripsi.</span>}
-                </p>
-              </div>
-            )}
-
-            {/* ── Social links ── */}
-            {editing ? (
-              <div className="grid grid-cols-2 gap-3">
-                <Input label="Instagram" value={form.ig}
-                  onChange={v => setForm(f => ({ ...f, ig: v }))} placeholder="username" />
-                <Input label="GitHub" value={form.github}
-                  onChange={v => setForm(f => ({ ...f, github: v }))} placeholder="username" />
-              </div>
-            ) : (
-              (igHref || ghHref) && (
-                <div className="flex gap-2">
-                  {igHref && (
-                    <a href={igHref} target="_blank" rel="noreferrer"
-                      className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold hover:opacity-80 transition-opacity"
-                      style={{ background: `${TEAL}15`, color: TEAL }}>
-                      <Instagram className="w-3.5 h-3.5" />
-                      Instagram
-                      <ExternalLink className="w-3 h-3 opacity-50" />
-                    </a>
-                  )}
-                  {ghHref && (
-                    <a href={ghHref} target="_blank" rel="noreferrer"
-                      className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold hover:opacity-80 transition-opacity"
-                      style={{ background: `${TEAL}15`, color: TEAL }}>
-                      <GithubIcon className="w-3.5 h-3.5" />
-                      GitHub
-                      <ExternalLink className="w-3 h-3 opacity-50" />
-                    </a>
-                  )}
-                </div>
-              )
-            )}
-
-            {/* ── Action Buttons ── */}
-            {canEdit && (
-              <div className="flex gap-2 pt-1">
-                {editing ? (
-                  <>
-                    <button onClick={handleSave}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold hover:opacity-90 active:scale-95 transition-all"
-                      style={{ background: TEAL, color: AZURE }}>
-                      <Save className="w-4 h-4" />
-                      Simpan Perubahan
-                    </button>
-                    <button
-                      onClick={() => { setEditing(false); setForm({ name: student.name, about: student.about, ig: student.ig, github: student.github, role: student.role }); }}
-                      className="px-4 py-2.5 rounded-xl text-sm font-semibold hover:opacity-70 transition-all"
-                      style={{ background: `${TEAL}15`, color: TEAL }}>
-                      Batal
-                    </button>
-                  </>
-                ) : (
-                  <button onClick={() => setEditing(true)}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold hover:opacity-90 active:scale-95 transition-all"
-                    style={{ background: TEAL, color: AZURE }}>
-                    <Edit3 className="w-4 h-4" />
-                    Edit Profil
-                  </button>
                 )}
-              </div>
+
+                {/* ── About ── */}
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5"
+                    style={{ color: `${TEAL}80` }}>About Me</p>
+                  <p className="text-sm leading-relaxed"
+                    style={{ color: `${TEAL}cc`, wordBreak: 'break-word' }}>
+                    {student.about
+                      ? student.about.split(' ').slice(0, 200).join(' ')
+                      : <span style={{ color: `${TEAL}50` }}>Belum ada deskripsi.</span>}
+                  </p>
+                </div>
+
+                {/* ── Social Links ── */}
+                {(igHref || ghHref || student.portfolio) && (
+                  <div className="flex flex-wrap gap-2">
+                    {igHref && (
+                      <a href={igHref} target="_blank" rel="noreferrer"
+                        className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold hover:opacity-80 transition-opacity"
+                        style={{ background: `${TEAL}15`, color: TEAL }}>
+                        <Instagram className="w-3.5 h-3.5" />
+                        Instagram
+                        <ExternalLink className="w-3 h-3 opacity-50" />
+                      </a>
+                    )}
+                    {ghHref && (
+                      <a href={ghHref} target="_blank" rel="noreferrer"
+                        className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold hover:opacity-80 transition-opacity"
+                        style={{ background: `${TEAL}15`, color: TEAL }}>
+                        <GithubIcon className="w-3.5 h-3.5" />
+                        GitHub
+                        <ExternalLink className="w-3 h-3 opacity-50" />
+                      </a>
+                    )}
+                    {student.portfolio && (
+                      <a href={student.portfolio} target="_blank" rel="noreferrer"
+                        className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold hover:opacity-80 transition-opacity"
+                        style={{ background: `${TEAL}15`, color: TEAL }}>
+                        <Globe className="w-3.5 h-3.5" />
+                        Portfolio
+                        <ExternalLink className="w-3 h-3 opacity-50" />
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Action Buttons ── */}
+                {canEdit && (
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={() => setEditing(true)}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold hover:opacity-90 active:scale-95 transition-all cursor-pointer"
+                      style={{ background: TEAL, color: AZURE }}>
+                      <Edit3 className="w-4 h-4" />
+                      Edit Profil
+                    </button>
+                  </div>
+                )}
+              </>
             )}
 
             {/* Saved feedback */}

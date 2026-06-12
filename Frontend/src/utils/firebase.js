@@ -24,6 +24,7 @@
 import { initializeApp }  from 'firebase/app';
 import { getAuth }        from 'firebase/auth';
 import { getFirestore }   from 'firebase/firestore';
+import { getStorage }     from 'firebase/storage';
 
 // ── Firebase Project Config ─────────────────────────────────────────────────
 // Isi nilai-nilai ini di file .env di root folder Frontend/
@@ -40,13 +41,14 @@ const firebaseConfig = {
 // ── 1. Main Application ─────────────────────────────────────────────────────
 // Digunakan untuk tracking sesi pengguna aktif (admin/student login).
 // onAuthStateChanged di AuthProvider.jsx hanya listen ke instance ini.
-export const app  = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const db   = getFirestore(app);
+export const app     = initializeApp(firebaseConfig);
+export const auth    = getAuth(app);
+export const db      = getFirestore(app);
+export const storage = getStorage(app);
 
 // ── 2. Secondary Application ────────────────────────────────────────────────
 // KHUSUS untuk Admin membuat akun siswa baru tanpa mengganggu sesi utama.
-// Firebase SDK memungkinkan beberapa App instance selama diberi nama berbeda.
+// Firebase SDK memungkinkan several App instance selama diberi nama berbeda.
 // Instance ini TIDAK memiliki listener onAuthStateChanged sehingga aman digunakan
 // untuk createUserWithEmailAndPassword() tanpa mempengaruhi sesi Admin.
 export const secondaryApp  = initializeApp(firebaseConfig, 'SecondaryApp');
