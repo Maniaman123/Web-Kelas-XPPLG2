@@ -33,7 +33,7 @@ import {
   updateSchedule,
   seedSchedule,
 } from '../utils/firestoreService';
-import { roles, avatarColors, getInitials } from '../data/students';
+import { avatarColors, getInitials } from '../data/students';
 import {
   UserPlus, Trash2, ShieldAlert, CheckCircle, XCircle,
   Clock, Camera, Rocket, Trophy, Loader2,
@@ -193,7 +193,7 @@ export default function AdminDashboard() {
         absentNumber: parseInt(absentNumber),
         gender,
         initials:     getInitials(name),
-        role:         roles[Math.floor(Math.random() * roles.length)],
+        role:         null, // Kosong — siswa memilih sendiri via ProfileForm
         avatarColor:  avatarColors[Math.floor(Math.random() * avatarColors.length)],
         about: '', ig: '', github: '', portfolio: '',
       });

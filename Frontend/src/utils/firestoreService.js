@@ -28,6 +28,13 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 
+import {
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updateEmail,
+  updatePassword,
+} from 'firebase/auth';
+
 import { db } from './firebase';
 
 // ── Nama Koleksi ────────────────────────────────────────────────────────────
@@ -78,6 +85,59 @@ export async function createUserDoc(uid, data) {
  */
 export async function deleteUserDoc(uid) {
   await deleteDoc(doc(db, COL.USERS, uid));
+}
+
+/**
+ * Perbarui email dan/atau password Firebase Auth milik pengguna yang sedang login.
+ *
+ * Firebase Auth mengharuskan re-autentikasi sebelum operasi sensitif ini dapat
+ * dilakukan. Jika sesi sudah terlalu lama, Firebase akan melempar
+ * `auth/requires-recent-login` — fungsi ini menanganinya dengan membuat kredensial
+ * baru dari currentPassword yang dimasukkan pengguna.
+ *
+ * Alur:
+ *   1. Ambil currentUser dari Firebase Auth instance utama.
+ *   2. Buat AuthCredential menggunakan email + currentPassword saat ini.
+ *   3. Panggil reauthenticateWithCredential() → verifikasi sesi.
+ *   4a. Jika newEmail berbeda, panggil updateEmail() + sinkronisasi Firestore.
+ *   4b. Jika newPassword tidak kosong, panggil updatePassword().
+ *
+ * @param {import('firebase/auth').Auth} auth    - Instance Firebase Auth utama
+ * @param {string} currentPassword               - Password lama pengguna (untuk re-auth)
+ * @param {string} newEmail                      - Email baru (kosong = tidak diubah)
+ * @param {string} newPassword                   - Password baru (kosong = tidak diubah)
+ * @returns {Promise<{ emailChanged: boolean, passwordChanged: boolean }>}
+ * @throws FirebaseError dengan code auth/wrong-password, auth/requires-recent-login, dll.
+ */
+export async function updateUserCredentials(auth, currentPassword, newEmail, newPassword) {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Tidak ada pengguna yang sedang login.');
+
+  // Langkah 3: Re-autentikasi dengan password saat ini
+  const credential = EmailAuthProvider.credential(user.email, currentPassword);
+  await reauthenticateWithCredential(user, credential);
+
+  let emailChanged    = false;
+  let passwordChanged = false;
+
+  // Langkah 4a: Update email jika berbeda dari yang sekarang
+  const trimmedEmail = newEmail?.trim();
+  if (trimmedEmail && trimmedEmail !== user.email) {
+    await updateEmail(user, trimmedEmail);
+
+    // Sinkronisasi email ke dokumen Firestore users/{uid}
+    await updateDoc(doc(db, COL.USERS, user.uid), { email: trimmedEmail });
+
+    emailChanged = true;
+  }
+
+  // Langkah 4b: Update password jika ada input baru
+  if (newPassword && newPassword.length >= 6) {
+    await updatePassword(user, newPassword);
+    passwordChanged = true;
+  }
+
+  return { emailChanged, passwordChanged };
 }
 
 
