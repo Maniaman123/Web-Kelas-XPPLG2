@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import useAuth from '../context/useAuth';
-import { subscribeToProjects, subscribeToPending, submitPending } from '../utils/firestoreService';
+import { subscribeToProjects, subscribeToMyPending, submitPending } from '../utils/firestoreService';
 import { Rocket, Plus, ExternalLink, Clock, X, Upload } from 'lucide-react';
 
 const MAX_FILE_MB = 2;
@@ -24,19 +24,21 @@ export default function Projects() {
   useEffect(() => {
     const unsubProjects = subscribeToProjects((approved) => {
       setProjects(approved);
+      setLoading(false);
     });
 
-    const unsubPending = subscribeToPending((items) => {
-      const projectPending = items.filter(p => p.type === 'project');
-      setPending(projectPending);
-      setLoading(false);
+    // subscribeToMyPending hanya membaca dokumen milik user sendiri
+    // (studentId == uid) — aman untuk halaman non-admin.
+    // Jika user belum login, langsung kembalikan array kosong.
+    const unsubPending = subscribeToMyPending(user?.uid ?? null, 'project', (items) => {
+      setPending(items);
     });
 
     return () => {
       unsubProjects();
       unsubPending();
     };
-  }, []);
+  }, [user?.uid]);
 
   const handleFileChange = (e) => {
     setFileError('');
@@ -88,7 +90,8 @@ export default function Projects() {
     }
   };
 
-  const myPendingItems = pending.filter(p => p.studentId === user?.id);
+  // Listener sudah scoped ke uid — tidak perlu filter manual lagi
+  const myPendingItems = pending;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 font-sans">

@@ -4,13 +4,18 @@ rules_version = '2';
 // Firestore Security Rules — X PPLG 2 Web App
 //
 // Prinsip Keamanan:
-//   1. Public read untuk data konten (students, projects, achievements, cinematography)
-//      → Pengunjung tanpa akun bisa melihat semua data publik
+//   1. Public read untuk data konten (students, projects, achievements,
+//      cinematography, schedule) → Pengunjung tanpa akun bisa melihat semua
+//      data publik.
 //   2. Siswa hanya bisa update PROFIL MILIKNYA SENDIRI
-//      → Divalidasi via isStudentOwner() yang mengecek field userId di dokumen
+//      → Divalidasi via isStudentOwner() yang mengecek field userId di dokumen.
 //   3. Admin bisa melakukan semua operasi (create, read, update, delete)
-//      → Divalidasi via isAdmin() yang membaca role dari koleksi users
-//   4. Pending items: siswa bisa CREATE, admin bisa READ dan DELETE
+//      → Divalidasi via isAdmin() yang membaca role dari koleksi users.
+//   4. Pending items:
+//      - Siswa AUTHENTICATED bisa CREATE dan READ dokumen MILIKNYA SENDIRI
+//        (where studentId == uid). Ini kunci utama agar pending submission
+//        bisa tampil di halaman publik tanpa membuka akses ke semua pending.
+//      - Admin bisa READ SEMUA dan DELETE (approve/reject).
 //
 // Deploy rules ini via:
 //   firebase deploy --only firestore:rules
@@ -61,12 +66,27 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ── Schedule Collection ────────────────────────────────────────────────
+    // [FIXED] Koleksi ini sebelumnya tidak ada di rules sehingga listener
+    // subscribeToSchedule() selalu melempar permission-denied.
+    // Public read → semua orang bisa melihat jadwal kelas.
+    // Write → hanya admin yang bisa mengubah jadwal.
+    match /schedule/{dayId} {
+      allow read:  if true;
+      allow write: if isAdmin();
+    }
+
     // ── Pending Items Collection ───────────────────────────────────────────
-    // Authenticated users (siswa) bisa CREATE (submit konten untuk review)
-    // Hanya admin yang bisa READ daftar pending dan DELETE (approve/reject)
+    // [FIXED] Aturan baru: siswa yang login bisa READ dokumen MILIK MEREKA
+    // sendiri (studentId == uid). Ini memungkinkan halaman Projects,
+    // Achievements, dan Cinematography menampilkan status pending submission
+    // tanpa membuka akses ke seluruh koleksi pendingItems.
+    // Admin tetap bisa melihat dan menghapus SEMUA dokumen pending.
     match /pendingItems/{pendingId} {
       allow create: if request.auth != null;
-      allow read:   if isAdmin();
+      allow read:   if isAdmin() ||
+                      (request.auth != null &&
+                       resource.data.studentId == request.auth.uid);
       allow delete: if isAdmin();
     }
 

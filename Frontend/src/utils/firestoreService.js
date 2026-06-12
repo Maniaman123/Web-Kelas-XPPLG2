@@ -23,6 +23,7 @@ import {
   onSnapshot,
   query,
   orderBy,
+  where,
   serverTimestamp,
   writeBatch,
 } from 'firebase/firestore';
@@ -279,6 +280,36 @@ export async function deleteCinematography(id) {
 export function subscribeToPending(callback) {
   const q = query(
     collection(db, COL.PENDING),
+    orderBy('createdAt', 'desc')
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    callback(items);
+  });
+}
+
+/**
+ * [REAL-TIME] Subscribe ke pending items MILIK SISWA SENDIRI.
+ * Hanya mengambil dokumen di mana studentId == uid — aman untuk halaman
+ * non-admin karena Firestore rules mengizinkan self-read.
+ *
+ * @param {string}   uid      - Firebase Auth UID siswa yang sedang login
+ * @param {string}   type     - 'project' | 'achievement' | 'cinematography'
+ * @param {Function} callback - Dipanggil setiap ada perubahan data
+ * @returns {Function} unsubscribe
+ */
+export function subscribeToMyPending(uid, type, callback) {
+  if (!uid) {
+    // Tidak login → langsung kembalikan data kosong, tidak buka listener
+    callback([]);
+    return () => {};
+  }
+
+  const q = query(
+    collection(db, COL.PENDING),
+    where('studentId', '==', uid),
+    where('type',      '==', type),
     orderBy('createdAt', 'desc')
   );
 

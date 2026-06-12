@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import useAuth from '../context/useAuth';
-import { getCinematography, subscribeToPending, submitPending } from '../utils/firestoreService';
+import { getCinematography, subscribeToMyPending, submitPending } from '../utils/firestoreService';
 import { Camera, Plus, Play, Clock, Upload, X } from 'lucide-react';
 
 const MAX_FILE_MB = 2;
@@ -27,18 +27,18 @@ export default function Cinematography() {
         setMedia(approved);
       } catch (err) {
         console.error("Failed to load approved cinematography:", err);
+      } finally {
+        setLoading(false);
       }
     }
     loadCinematography();
 
-    const unsubscribe = subscribeToPending((items) => {
-      const cinematographyPending = items.filter(p => p.type === 'cinematography');
-      setPending(cinematographyPending);
-      setLoading(false);
+    const unsubscribe = subscribeToMyPending(user?.uid ?? null, 'cinematography', (items) => {
+      setPending(items);
     });
 
     return unsubscribe;
-  }, []);
+  }, [user?.uid]);
 
   // How many times THIS user has uploaded (approved + pending)
   const myApproved = media.filter(m => m.studentId === user?.id);
@@ -107,7 +107,7 @@ export default function Cinematography() {
     }
   };
 
-  const myPendingItems = pending.filter(p => p.studentId === user?.id);
+  const myPendingItems = pending;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 font-sans">

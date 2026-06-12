@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import useAuth from '../context/useAuth';
-import { subscribeToAchievements, subscribeToPending, submitPending } from '../utils/firestoreService';
+import { subscribeToAchievements, subscribeToMyPending, submitPending } from '../utils/firestoreService';
 import { Trophy, Plus, Clock, X, Upload } from 'lucide-react';
 
 const MAX_FILE_MB = 2;
@@ -24,19 +24,18 @@ export default function Achievements() {
   useEffect(() => {
     const unsubAchievements = subscribeToAchievements((approved) => {
       setAchievements(approved);
+      setLoading(false);
     });
 
-    const unsubPending = subscribeToPending((items) => {
-      const achievementsPending = items.filter(p => p.type === 'achievement');
-      setPending(achievementsPending);
-      setLoading(false);
+    const unsubPending = subscribeToMyPending(user?.uid ?? null, 'achievement', (items) => {
+      setPending(items);
     });
 
     return () => {
       unsubAchievements();
       unsubPending();
     };
-  }, []);
+  }, [user?.uid]);
 
   const handleFileChange = (e) => {
     setFileError('');
@@ -88,7 +87,7 @@ export default function Achievements() {
     }
   };
 
-  const myPendingItems = pending.filter(p => p.studentId === user?.id);
+  const myPendingItems = pending;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 font-sans">

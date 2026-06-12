@@ -24,7 +24,7 @@
 // Developer Credit: Reyhan Septianto Ramadhan
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useEffect, useRef, useState, memo } from 'react';
+import { useEffect, useRef, useMemo, memo } from 'react';
 import { Renderer, Triangle, Program, Mesh } from 'ogl';
 
 // ─── Detection Constants ─────────────────────────────────────────────────────
@@ -32,88 +32,94 @@ import { Renderer, Triangle, Program, Mesh } from 'ogl';
 // Total score >= THRESHOLD_HIGH  → 'high'
 // Total score >= THRESHOLD_MED   → 'medium'
 // Otherwise                      → 'low'
-const THRESHOLD_HIGH = 5;
-const THRESHOLD_MED  = 3;
+const THRESHOLD_HIGH = 6; // raised: desktop 8-core+ with 8GB+ RAM
+const THRESHOLD_MED  = 4; // raised: requires at least 6-core + 4GB or 8-core + 2GB
 
 /**
  * useDeviceTier — React hook that detects device capability tier.
  * Returns 'low' | 'medium' | 'high'.
  *
- * Runs ONCE after mount. Defaults to 'low' until detection resolves
- * (optimistic-low-default strategy) to guarantee a fast first paint.
+ * Uses useMemo for pure memoized computation of device capability.
+ * This avoids useState/useEffect and eliminates synchronous state updates.
  *
  * @param {'auto'|'low'|'medium'|'high'} override
  * @returns {'low'|'medium'|'high'}
  */
 function useDeviceTier(override) {
-  // Start as 'low' — the fastest, safest default. Detection upgrades it.
-  const [tier, setTier] = useState('low');
+  return useMemo(() => {
+    if (override && override !== 'auto') return override;
 
-  useEffect(() => {
-    // If caller explicitly overrides, just use that — no detection needed.
-    if (override && override !== 'auto') {
-      setTier(override);
-      return;
+    if (typeof window === 'undefined') return 'low';
+
+    // ── Signal 0: WebGL capability check (most critical) ────────────────────
+    // If the GPU cannot create a WebGL context at all, there is zero point
+    // running the WebGL path — always fall back to CSS.
+    try {
+      const testCanvas = document.createElement('canvas');
+      const testGl =
+        testCanvas.getContext('webgl') ||
+        testCanvas.getContext('experimental-webgl');
+      if (!testGl) return 'low';
+    } catch {
+      return 'low';
+    }
+
+    // ── Signal 1: prefers-reduced-motion (accessibility, highest priority) ──
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return 'low';
     }
 
     let score = 0;
 
-    // ── Signal 1: prefers-reduced-motion (accessibility, highest priority) ──
-    // If the user has explicitly asked for reduced motion via OS settings,
-    // we must honor that. Immediately return 'low' and do nothing else.
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      setTier('low');
-      return;
-    }
-
     // ── Signal 2: hardwareConcurrency — CPU core count ──────────────────────
-    // Available in every browser since 2014. Fallback to 1 if undefined.
-    const cores = navigator.hardwareConcurrency || 1;
+    const cores = (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || 1;
     if (cores >= 8) score += 3;
     else if (cores >= 6) score += 2;
     else if (cores >= 4) score += 1;
-    // 1–3 cores: +0 points
+    // ≤3 cores: +0
 
     // ── Signal 3: deviceMemory — RAM estimate (Chromium/Android only) ───────
-    // Undefined on Safari/Firefox — treated as a neutral/bonus signal only.
-    // Values: 0.25, 0.5, 1, 2, 4, 8 GB (rounded down by the browser for privacy).
-    const ram = navigator.deviceMemory; // undefined on non-Chrome
+    const ram = typeof navigator !== 'undefined' ? navigator.deviceMemory : undefined;
     if (ram !== undefined) {
       if (ram >= 8) score += 3;
       else if (ram >= 4) score += 2;
       else if (ram >= 2) score += 1;
-      // RAM < 2 GB: +0 points
+      // <2 GB: +0 (very low-end)
     } else {
-      // Signal unavailable — grant 1 neutral point so Safari on MacBook
-      // (which would score high via cores) isn't penalised.
+      // Safari/Firefox — unknown RAM, grant 1 neutral point only
       score += 1;
     }
 
     // ── Signal 4: touch + small screen heuristic ─────────────────────────────
     // Budget Android phones often report 4–6 cores but have weak GPU and
-    // thermal constraints. Touch + <768px is a strong low-end heuristic.
-    const isMobileHeuristic =
-      navigator.maxTouchPoints > 1 &&
-      window.matchMedia('(max-width: 768px)').matches;
-    if (isMobileHeuristic) score -= 2; // Penalty for likely-mobile-GPU
+    // thermal throttling. Touch + ≤768px is a reliable low-end indicator.
+    const hasTouch = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 1;
+    const isSmallScreen = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+    const isMobileHeuristic = hasTouch && isSmallScreen;
+    if (isMobileHeuristic) score -= 3; // stronger penalty than before
+
+    // ── Signal 5: mobile OS via userAgent ────────────────────────────────────
+    // Catches phones/tablets that open in desktop mode (no touch heuristic).
+    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+    const isMobileUA = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+    if (isMobileUA) score -= 1;
 
     // ── Composite score → tier ───────────────────────────────────────────────
-    const resolved =
-      score >= THRESHOLD_HIGH ? 'high'
-      : score >= THRESHOLD_MED ? 'medium'
+    return score >= THRESHOLD_HIGH
+      ? 'high'
+      : score >= THRESHOLD_MED
+      ? 'medium'
       : 'low';
-
-    setTier(resolved);
   }, [override]);
-
-  return tier;
 }
 
 // ─── Quality Settings (WebGL path) ──────────────────────────────────────────
+// NOTE: 'low' tier never reaches PrismWebGL — it renders PrismFallback (pure CSS).
+// These settings only apply to 'medium' and 'high' tiers.
 const QUALITY_SETTINGS = {
-  low:    { steps: 35, dpr: 1.0 },
-  medium: { steps: 55, dpr: 1.0 },
-  high:   { steps: 70, dpr: 1.0 }, // DPR intentionally capped at 1 even on high-end
+  low:    { steps: 25, dpr: 1.0 }, // fallback (not used by PrismWebGL)
+  medium: { steps: 35, dpr: 1.0 }, // reduced from 55 → 35 for borderline devices
+  high:   { steps: 60, dpr: 1.0 }, // reduced from 70 → 60; DPR capped at 1
 };
 
 // ─── Static Fallback (Low-End Path) ─────────────────────────────────────────

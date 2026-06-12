@@ -14,7 +14,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Clock, Monitor, BookOpen, Dumbbell, Music,
-  Globe, Shield, Star, BookMarked, Loader2, Wifi,
+  Globe, Shield, Star, BookMarked, Wifi,
 } from 'lucide-react';
 import { subscribeToSchedule } from '../utils/firestoreService';
 

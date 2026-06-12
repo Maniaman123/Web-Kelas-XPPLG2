@@ -216,7 +216,7 @@ export default function AdminDashboard() {
     } finally {
       setFormLoading(false);
     }
-  }, [name, absentNumber, gender, tempPassword, user?.email]);
+  }, [name, absentNumber, gender, tempPassword]);
 
   // ── Hapus Siswa ────────────────────────────────────────────────────────────
   const handleDelete = useCallback(async (student) => {

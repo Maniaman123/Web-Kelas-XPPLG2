@@ -14,7 +14,6 @@ export default function BentoGrid() {
   const { user } = useAuth();
   const gridRef = useRef(null);
   const [students, setStudents] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [genderFilter, setGenderFilter] = useState("all"); // 'all', 'L', 'P'
   const [showAll, setShowAll] = useState(false);
@@ -22,7 +21,6 @@ export default function BentoGrid() {
   useEffect(() => {
     const unsubscribe = subscribeToStudents((data) => {
       setStudents(data);
-      setLoading(false);
     });
     return unsubscribe;
   }, []);
