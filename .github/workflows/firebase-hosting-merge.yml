@@ -11,10 +11,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: npm ci && npm run build
+
+      # 1. Beri tahu GitHub untuk masuk dan melakukan build di dalam folder Frontend
+      - name: Install Dependencies and Build
+        run: npm ci && npm run build
+        working-directory: Frontend
+
+      # 2. Beri tahu Firebase Action bahwa file firebase.json ada di dalam folder Frontend
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_RSR_KELASHAN }}
           channelId: live
           projectId: rsr-kelashan
+          entryPoint: ./Frontend
