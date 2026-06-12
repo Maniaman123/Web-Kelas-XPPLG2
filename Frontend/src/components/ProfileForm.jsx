@@ -2,19 +2,75 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Reusable Profile Editor Component — X PPLG 2
 //
-// Form terpadu untuk mengubah data profil siswa (Nama, Tentang Saya, Instagram,
-// GitHub, Portfolio, Role) dan mengunggah foto profil ke Firebase Storage.
+// Menggunakan Client-Side Canvas Compression untuk mengubah foto profil
+// menjadi Base64 string ringkas (<50KB) dan menyimpannya langsung ke Firestore.
+// Tidak membutuhkan Firebase Storage — 100% Spark Plan compatible.
+//
+// Developer Credit: Reyhan Septianto Ramadhan
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useState } from 'react';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { User, Globe, Save, Upload, X, Trash2, Camera } from 'lucide-react';
-import { storage } from '../utils/firebase';
+import { useState, useRef } from 'react';
+import { Globe, Save, Upload, Trash2, Camera } from 'lucide-react';
 import { updateStudentProfile } from '../utils/firestoreService';
 import { roles } from '../data/students';
 
-const TEAL  = '#243B3C';
+const TEAL = '#243B3C';
+const MAX_DIMENSION = 150; // px — batas maksimal lebar/tinggi avatar
+const JPEG_QUALITY  = 0.7; // 70% — cukup tajam, ukuran sangat kecil
 
+// ── Client-Side Canvas Compression ───────────────────────────────────────────
+// Menerima File gambar, mengubah ukurannya ke max 150×150 px, lalu
+// mengembalikan Data URL (Base64 JPEG) yang aman untuk disimpan ke Firestore.
+function compressImageToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      const img = new Image();
+
+      img.onload = () => {
+        // Hitung dimensi proporsional tanpa melebihi MAX_DIMENSION
+        let { width, height } = img;
+        if (width > height) {
+          if (width > MAX_DIMENSION) {
+            height = Math.round((height * MAX_DIMENSION) / width);
+            width  = MAX_DIMENSION;
+          }
+        } else {
+          if (height > MAX_DIMENSION) {
+            width  = Math.round((width * MAX_DIMENSION) / height);
+            height = MAX_DIMENSION;
+          }
+        }
+
+        // Gambar di atas Canvas lalu export sebagai JPEG
+        const canvas = document.createElement('canvas');
+        canvas.width  = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const base64 = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
+        resolve(base64);
+      };
+
+      img.onerror = () => reject(new Error('Gagal memuat gambar.'));
+      img.src = e.target.result;
+    };
+
+    reader.onerror = () => reject(new Error('Gagal membaca file.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ProfileForm Component
+// Props:
+//   student     — data siswa dari Firestore (diperlukan: student.id)
+//   onSuccess   — callback(updatedStudentData) setelah berhasil disimpan
+//   onCancel    — callback saat tombol Batal ditekan
+//   showCancel  — tampilkan tombol Batal atau tidak (default: true)
+// ─────────────────────────────────────────────────────────────────────────────
 export default function ProfileForm({ student, onSuccess, onCancel, showCancel = true }) {
   const [name, setName]           = useState(student?.name || '');
   const [about, setAbout]         = useState(student?.about || '');
@@ -22,34 +78,65 @@ export default function ProfileForm({ student, onSuccess, onCancel, showCancel =
   const [github, setGithub]       = useState(student?.github || '');
   const [portfolio, setPortfolio] = useState(student?.portfolio || '');
   const [role, setRole]           = useState(student?.role || null);
-  const [avatarUrl, setAvatarUrl] = useState(student?.avatarUrl || '');
 
-  // Upload states
-  const [imageFile, setImageFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(student?.avatarUrl || '');
-  const [isSaving, setIsSaving]   = useState(false);
-  const [error, setError]         = useState('');
+  // previewUrl: Data URL tampil langsung di UI
+  // pendingBase64: string yang akan disimpan ke Firestore jika ada file baru
+  const [previewUrl,    setPreviewUrl]    = useState(student?.avatarUrl || '');
+  const [pendingBase64, setPendingBase64] = useState(null);
 
-  const handleFileChange = (e) => {
+  const [isSaving,   setIsSaving]   = useState(false);
+  const [error,      setError]      = useState('');
+  const [compressing, setCompressing] = useState(false);
+  const fileInputRef                 = useRef(null);
+
+  // ── Pilih & Kompres Gambar ─────────────────────────────────────────────────
+  const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      setError('Ukuran foto profil maksimal adalah 2MB.');
+    if (!file.type.startsWith('image/')) {
+      setError('File harus berupa gambar (JPG, PNG, WEBP).');
+      return;
+    }
+
+    // Batas file mentah sebelum kompresi: 10MB sudah sangat lebih dari cukup
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Ukuran file terlalu besar. Pilih gambar di bawah 10MB.');
       return;
     }
 
     setError('');
-    setImageFile(file);
-    setPreviewUrl(URL.createObjectURL(file));
+    setCompressing(true);
+
+    try {
+      const base64 = await compressImageToBase64(file);
+      setPreviewUrl(base64);
+      setPendingBase64(base64);
+
+      // Estimasi ukuran output (1 karakter Base64 ≈ 0.75 byte)
+      const estimatedKB = Math.round((base64.length * 0.75) / 1024);
+      if (estimatedKB > 500) {
+        // Hampir tidak mungkin terjadi di 150×150 JPEG, tapi jaga-jaga
+        setError(`Hasil kompresi terlalu besar (${estimatedKB}KB). Coba gambar lain.`);
+        setPreviewUrl('');
+        setPendingBase64(null);
+      }
+    } catch (err) {
+      console.error('[ProfileForm] Kompresi gambar gagal:', err);
+      setError('Gagal memproses gambar. Coba file lain.');
+    } finally {
+      setCompressing(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const handleRemovePhoto = () => {
-    setImageFile(null);
     setPreviewUrl('');
-    setAvatarUrl('');
+    setPendingBase64(''); // string kosong = hapus avatar dari Firestore
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  // ── Submit ke Firestore ────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!name.trim()) {
@@ -61,28 +148,20 @@ export default function ProfileForm({ student, onSuccess, onCancel, showCancel =
     setError('');
 
     try {
-      let finalAvatarUrl = avatarUrl;
+      // avatarUrl = Base64 string baru / string kosong / tetap nilai lama
+      const finalAvatarUrl = pendingBase64 !== null ? pendingBase64 : (student?.avatarUrl || '');
 
-      // 1. Upload ke Firebase Storage jika ada file baru
-      if (imageFile) {
-        // Gunakan nama file unik dengan timestamp agar cache browser ter-refresh
-        const fileExtension = imageFile.name.split('.').pop();
-        const storageRef = ref(storage, `avatars/${student.id}/profile_${Date.now()}.${fileExtension}`);
-        await uploadBytes(storageRef, imageFile);
-        finalAvatarUrl = await getDownloadURL(storageRef);
-      }
-
-      // 2. Simpan perubahan ke Firestore
       const updatedFields = {
-        name: name.trim(),
-        about: about.trim(),
-        ig: ig.trim(),
-        github: github.trim(),
+        name:      name.trim(),
+        about:     about.trim(),
+        ig:        ig.trim(),
+        github:    github.trim(),
         portfolio: portfolio.trim(),
         role,
         avatarUrl: finalAvatarUrl,
       };
 
+      // updateStudentProfile = Firestore partial update (updateDoc)
       await updateStudentProfile(student.id, updatedFields);
 
       if (onSuccess) {
@@ -98,38 +177,70 @@ export default function ProfileForm({ student, onSuccess, onCancel, showCancel =
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5 text-left font-sans">
-      
+
       {/* ── Avatar Upload Section ── */}
       <div className="flex flex-col items-center sm:flex-row gap-4 p-4 rounded-2xl bg-black/5 border border-black/5">
-        <div className="relative w-20 h-20 rounded-2xl overflow-hidden bg-slate-200 border-2 border-dashed border-black/20 flex items-center justify-center shrink-0 shadow-inner group">
+        {/* Preview avatar atau inisial fallback */}
+        <div
+          className={`relative w-20 h-20 rounded-2xl overflow-hidden flex items-center justify-center shrink-0 shadow-inner group border-2 border-dashed border-black/20 ${student?.avatarColor || 'bg-teal-600'}`}
+        >
           {previewUrl ? (
-            <img src={previewUrl} alt="Preview Avatar" className="w-full h-full object-cover" />
+            // Base64 Data URL langsung bisa masuk ke src
+            <img
+              src={previewUrl}
+              alt="Preview Avatar"
+              className="w-full h-full object-cover"
+            />
           ) : (
-            <div className={`w-full h-full flex items-center justify-center text-white text-2xl font-extrabold ${student?.avatarColor || 'bg-teal-600'}`}>
+            <span className="text-white text-2xl font-extrabold select-none">
               {student?.initials || '??'}
-            </div>
+            </span>
           )}
+
+          {/* Hover overlay untuk trigger file picker */}
           <label className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition-opacity">
             <Camera className="w-6 h-6 text-white" />
-            <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleFileChange}
+            />
           </label>
         </div>
 
         <div className="flex-1 text-center sm:text-left space-y-1.5">
           <p className="text-sm font-bold text-inverted">Foto Profil</p>
           <p className="text-xs text-outlined leading-relaxed">
-            Format PNG, JPG, atau WEBP. Maksimal ukuran file 2MB.
+            Format JPG, PNG, atau WEBP. Gambar akan dikompres otomatis ke 150×150 px.
           </p>
           <div className="flex justify-center sm:justify-start gap-2">
-            <label className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold cursor-pointer hover:bg-primary/95 transition-all flex items-center gap-1.5 shadow-sm">
-              <Upload className="w-3.5 h-3.5" /> Pilih Foto
-              <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+            <label className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold cursor-pointer hover:bg-primary/90 transition-all flex items-center gap-1.5 shadow-sm">
+              {compressing ? (
+                <>
+                  <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin inline-block" />
+                  Memproses...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-3.5 h-3.5" /> Pilih Foto
+                </>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileChange}
+                disabled={compressing}
+              />
             </label>
+
             {previewUrl && (
               <button
                 type="button"
                 onClick={handleRemovePhoto}
-                className="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 border border-red-200 text-xs font-semibold hover:bg-red-100 transition-all flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-lg bg-red-50 text-red-600 border border-red-200 text-xs font-semibold hover:bg-red-100 transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" /> Hapus
               </button>
@@ -138,6 +249,7 @@ export default function ProfileForm({ student, onSuccess, onCancel, showCancel =
         </div>
       </div>
 
+      {/* Error message */}
       {error && (
         <p className="text-xs font-medium text-red-500 bg-red-50 p-2.5 rounded-xl border border-red-100">
           {error}
@@ -159,7 +271,7 @@ export default function ProfileForm({ student, onSuccess, onCancel, showCancel =
         />
       </div>
 
-      {/* ── Role Selector ── */}
+      {/* ── Role / Tech Stack Selector ── */}
       <div className="flex flex-col gap-1">
         <label className="text-[10px] font-bold uppercase tracking-widest text-outlined mb-1">
           Role / Tech Stack
@@ -174,7 +286,7 @@ export default function ProfileForm({ student, onSuccess, onCancel, showCancel =
                 onClick={() => setRole(r)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${r.color}`}
                 style={{
-                  outline: isSelected ? `2px solid ${TEAL}` : 'none',
+                  outline:       isSelected ? `2px solid ${TEAL}` : 'none',
                   outlineOffset: isSelected ? '2.5px' : '0px',
                 }}
               >
@@ -257,7 +369,7 @@ export default function ProfileForm({ student, onSuccess, onCancel, showCancel =
           <button
             type="button"
             onClick={onCancel}
-            disabled={isSaving}
+            disabled={isSaving || compressing}
             className="px-4 py-2.5 rounded-xl text-sm font-semibold text-outlined hover:bg-black/5 transition-all disabled:opacity-50 cursor-pointer"
           >
             Batal
@@ -265,7 +377,7 @@ export default function ProfileForm({ student, onSuccess, onCancel, showCancel =
         )}
         <button
           type="submit"
-          disabled={isSaving}
+          disabled={isSaving || compressing}
           className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-primary hover:bg-primary/95 transition-all shadow-md disabled:opacity-60 cursor-pointer"
         >
           <Save className="w-4 h-4" />
