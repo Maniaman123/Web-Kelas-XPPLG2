@@ -46,24 +46,33 @@ service cloud.firestore {
     }
 
     // ── Projects Collection ────────────────────────────────────────────────
-    // Public read, admin write
+    // Public read. Siswa terautentikasi bisa create (melalui alur pending).
+    // Update & Delete → pemilik konten (userId) atau admin.
     match /projects/{projectId} {
-      allow read:  if true;
-      allow write: if isAdmin();
+      allow read:   if true;
+      allow create: if request.auth != null; // Admin approve via batch dari pendingItems
+      allow update: if isAdmin() || request.auth.uid == resource.data.userId;
+      allow delete: if isAdmin() || request.auth.uid == resource.data.userId;
     }
 
     // ── Achievements Collection ────────────────────────────────────────────
-    // Public read, admin write
+    // Public read. Siswa terautentikasi bisa create (melalui alur pending).
+    // Update & Delete → pemilik konten (userId) atau admin.
     match /achievements/{achievementId} {
-      allow read:  if true;
-      allow write: if isAdmin();
+      allow read:   if true;
+      allow create: if request.auth != null;
+      allow update: if isAdmin() || request.auth.uid == resource.data.userId;
+      allow delete: if isAdmin() || request.auth.uid == resource.data.userId;
     }
 
     // ── Cinematography Collection ──────────────────────────────────────────
-    // Public read, admin write
+    // Public read. Siswa terautentikasi bisa create (melalui alur pending).
+    // Update & Delete → pemilik konten (userId) atau admin.
     match /cinematography/{itemId} {
-      allow read:  if true;
-      allow write: if isAdmin();
+      allow read:   if true;
+      allow create: if request.auth != null;
+      allow update: if isAdmin() || request.auth.uid == resource.data.userId;
+      allow delete: if isAdmin() || request.auth.uid == resource.data.userId;
     }
 
     // ── Schedule Collection ────────────────────────────────────────────────

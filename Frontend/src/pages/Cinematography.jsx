@@ -1,90 +1,149 @@
 import { useState, useRef, useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import useAuth from '../context/useAuth';
-import { getCinematography, subscribeToMyPending, submitPending } from '../utils/firestoreService';
-import { Camera, Plus, Play, Clock, Upload, X } from 'lucide-react';
+import {
+  subscribeToCinematography,
+  subscribeToMyPending,
+  submitPending,
+  deleteCinematography,
+} from '../utils/firestoreService';
+import { Camera, Plus, Play, Clock, Upload, X, Trash2, AlertTriangle } from 'lucide-react';
 
 const MAX_FILE_MB = 2;
 
-export default function Cinematography() {
-  const { user, isAuthenticated } = useAuth();
+// ── Confirmation Dialog ──────────────────────────────────────────────────────
+function DeleteConfirmDialog({ itemTitle, onConfirm, onCancel, isDeleting }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+      onClick={onCancel}
+    >
+      <motion.div
+        initial={{ scale: 0.92, opacity: 0, y: 16 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.92, opacity: 0, y: 16 }}
+        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+        className="bg-white rounded-3xl shadow-2xl p-7 max-w-sm w-full"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-11 h-11 bg-rose-100 rounded-2xl flex items-center justify-center shrink-0">
+            <AlertTriangle className="w-5 h-5 text-rose-600" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-inverted">Hapus Karya?</h3>
+            <p className="text-xs text-outlined mt-0.5">Tindakan ini tidak bisa dibatalkan.</p>
+          </div>
+        </div>
 
-  const [media, setMedia]         = useState([]);
-  const [pending, setPending]     = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [showForm, setShowForm]   = useState(false);
-  const [title, setTitle]         = useState('');
-  const [type, setType]           = useState('photo');
-  const [photos, setPhotos]       = useState([]);     // Array of Base64 for photo
-  const [videoUrl, setVideoUrl]   = useState('');     // URL for video
-  const [fileError, setFileError] = useState('');
-  const [submitted, setSubmitted] = useState(false);
-  const fileInputRef = useRef(null);
+        <p className="text-sm text-outlined mb-6 leading-relaxed">
+          Kamu akan menghapus karya{' '}
+          <span className="font-semibold text-inverted">"{itemTitle}"</span> secara permanen.
+        </p>
+
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            disabled={isDeleting}
+            className="flex-1 px-4 py-2.5 rounded-xl border border-black/10 text-outlined font-medium hover:bg-black/5 transition-colors cursor-pointer disabled:opacity-50"
+          >
+            Batal
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isDeleting}
+            className="flex-1 px-4 py-2.5 rounded-xl bg-rose-500 text-white font-medium hover:bg-rose-600 transition-colors cursor-pointer disabled:opacity-70 flex items-center justify-center gap-2"
+          >
+            {isDeleting ? (
+              <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+            ) : (
+              <Trash2 className="w-4 h-4" />
+            )}
+            {isDeleting ? 'Menghapus...' : 'Ya, Hapus'}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ── Main Component ───────────────────────────────────────────────────────────
+export default function Cinematography() {
+  const { user, role, isAuthenticated } = useAuth();
+
+  const [media, setMedia]               = useState([]);
+  const [pending, setPending]           = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [showForm, setShowForm]         = useState(false);
+  const [title, setTitle]               = useState('');
+  const [type, setType]                 = useState('photo');
+  const [photos, setPhotos]             = useState([]);
+  const [videoUrl, setVideoUrl]         = useState('');
+  const [fileError, setFileError]       = useState('');
+  const [submitted, setSubmitted]       = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null); // { id, title }
+  const [isDeleting, setIsDeleting]     = useState(false);
+  const fileInputRef                    = useRef(null);
 
   useEffect(() => {
-    async function loadCinematography() {
-      try {
-        const approved = await getCinematography();
-        setMedia(approved);
-      } catch (err) {
-        console.error("Failed to load approved cinematography:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadCinematography();
+    // Switch from one-time fetch to real-time subscription
+    const unsubMedia = subscribeToCinematography((approved) => {
+      setMedia(approved);
+      setLoading(false);
+    });
 
-    const unsubscribe = subscribeToMyPending(user?.uid ?? null, 'cinematography', (items) => {
+    const unsubPending = subscribeToMyPending(user?.uid ?? null, 'cinematography', (items) => {
       setPending(items);
     });
 
-    return unsubscribe;
+    return () => {
+      unsubMedia();
+      unsubPending();
+    };
   }, [user?.uid]);
 
   // How many times THIS user has uploaded (approved + pending)
-  const myApproved = media.filter(m => m.studentId === user?.id);
-  const myPending  = pending.filter(p => p.studentId === user?.id);
+  const myApproved = media.filter((m) => m.studentId === user?.id);
+  const myPending  = pending.filter((p) => p.studentId === user?.id);
   const myTotal    = myApproved.length + myPending.length;
   const canUpload  = isAuthenticated && user?.role === 'student' && myTotal < 1;
 
+  // ── File Handling ──────────────────────────────────────────────────────────
   const handleFileChange = (e) => {
     setFileError('');
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
-    
+
     let hasError = false;
     const validFiles = [];
-    files.forEach(file => {
-      if (file.size > MAX_FILE_MB * 1024 * 1024) {
-        hasError = true;
-      } else {
-        validFiles.push(file);
-      }
+    files.forEach((file) => {
+      if (file.size > MAX_FILE_MB * 1024 * 1024) hasError = true;
+      else validFiles.push(file);
     });
 
-    if (hasError) {
-      setFileError(`Beberapa file diabaikan karena lebih dari ${MAX_FILE_MB}MB.`);
-    }
+    if (hasError) setFileError(`Beberapa file diabaikan karena lebih dari ${MAX_FILE_MB}MB.`);
 
-    validFiles.forEach(file => {
+    validFiles.forEach((file) => {
       const reader = new FileReader();
-      reader.onload = (ev) => {
-        setPhotos(prev => [...prev, ev.target.result]);
-      };
+      reader.onload = (ev) => setPhotos((prev) => [...prev, ev.target.result]);
       reader.readAsDataURL(file);
     });
-    
+
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const removePhoto = (index) => {
-    setPhotos(prev => prev.filter((_, i) => i !== index));
-  };
+  const removePhoto = (index) => setPhotos((prev) => prev.filter((_, i) => i !== index));
 
+  // ── Submit ─────────────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title) return;
     if (type === 'photo' && photos.length === 0) { setFileError('Pilih file foto terlebih dahulu.'); return; }
-    if (type === 'video' && !videoUrl)  { setFileError('Masukkan URL video.'); return; }
+    if (type === 'video' && !videoUrl) { setFileError('Masukkan URL video.'); return; }
 
     const data = {
       studentId: user.id,
@@ -102,8 +161,23 @@ export default function Cinematography() {
       setTitle(''); setPhotos([]); setVideoUrl(''); setFileError('');
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err) {
-      console.error("Failed to submit cinematography:", err);
-      setFileError("Gagal mengirimkan karya. Coba lagi.");
+      console.error('Failed to submit cinematography:', err);
+      setFileError('Gagal mengirimkan karya. Coba lagi.');
+    }
+  };
+
+  // ── Delete ─────────────────────────────────────────────────────────────────
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await deleteCinematography(deleteTarget.id);
+      setDeleteTarget(null);
+    } catch (err) {
+      console.error('Failed to delete cinematography item:', err);
+      alert('Gagal menghapus karya. Kamu mungkin tidak memiliki izin.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -141,7 +215,9 @@ export default function Cinematography() {
         <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3 text-amber-800 text-sm">
           <Clock className="w-5 h-5 shrink-0" />
           <span>Karyamu berhasil dikirim dan <strong>menunggu persetujuan admin</strong>. Akan muncul di galeri setelah disetujui.</span>
-          <button onClick={() => setSubmitted(false)} className="ml-auto cursor-pointer"><X className="w-4 h-4" /></button>
+          <button onClick={() => setSubmitted(false)} className="ml-auto cursor-pointer">
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
@@ -161,8 +237,11 @@ export default function Cinematography() {
 
             <div>
               <label className="block text-sm font-medium text-inverted mb-1">Jenis Media</label>
-              <select value={type} onChange={(e) => { setType(e.target.value); setPhotos([]); setVideoUrl(''); setFileError(''); }}
-                className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary outline-none bg-white">
+              <select
+                value={type}
+                onChange={(e) => { setType(e.target.value); setPhotos([]); setVideoUrl(''); setFileError(''); }}
+                className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary outline-none bg-white"
+              >
                 <option value="photo">Foto</option>
                 <option value="video">Video (URL YouTube)</option>
               </select>
@@ -177,7 +256,7 @@ export default function Cinematography() {
                   {photos.map((photo, i) => (
                     <div key={i} className="relative w-24 h-24 rounded-xl border border-black/10 overflow-hidden shrink-0 group">
                       <img src={photo} alt="preview" className="w-full h-full object-cover" />
-                      <button type="button" onClick={() => removePhoto(i)} 
+                      <button type="button" onClick={() => removePhoto(i)}
                         className="absolute top-1 right-1 bg-black/50 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-500 cursor-pointer">
                         <X className="w-3 h-3" />
                       </button>
@@ -222,7 +301,7 @@ export default function Cinematography() {
         <div className="mb-8">
           <h3 className="text-sm font-semibold text-outlined mb-3">Karyamu (Menunggu Persetujuan)</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {myPendingItems.map(p => (
+            {myPendingItems.map((p) => (
               <div key={p.id} className="bg-amber-50 border-2 border-dashed border-amber-300 p-6 rounded-3xl flex flex-col">
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <h3 className="text-base font-bold text-inverted">{p.data.title}</h3>
@@ -247,7 +326,7 @@ export default function Cinematography() {
         </div>
       )}
 
-      {/* Approved gallery */}
+      {/* Approved gallery with AnimatePresence */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {loading ? (
           Array.from({ length: 6 }).map((_, i) => (
@@ -258,32 +337,68 @@ export default function Cinematography() {
             Belum ada karya yang disetujui.
           </div>
         ) : (
-          media.map((item) => (
-            <div key={item.id} className="bg-white p-6 rounded-3xl shadow-sm border border-black/5 flex flex-col hover:shadow-md transition-shadow">
-              <h3 className="text-lg font-bold text-inverted mb-2">{item.title}</h3>
-              {item.type === 'photo' ? (
-                item.photos && item.photos.length > 0 ? (
-                  <div className="flex overflow-x-auto gap-2 mb-3 pb-2 scrollbar-hide">
-                    {item.photos.map((ph, idx) => (
-                      <img key={idx} src={ph} alt="Dokumentasi" className="w-40 h-28 object-cover rounded-xl shrink-0 border border-black/5" />
-                    ))}
+          <AnimatePresence mode="popLayout">
+            {media.map((item) => {
+              const canDelete = role === 'admin' || user?.uid === item.userId;
+              return (
+                <motion.div
+                  key={item.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+                  transition={{ duration: 0.25 }}
+                  className="bg-white p-6 rounded-3xl shadow-sm border border-black/5 flex flex-col hover:shadow-md transition-shadow group relative"
+                >
+                  {/* Delete button */}
+                  {canDelete && (
+                    <button
+                      onClick={() => setDeleteTarget({ id: item.id, title: item.title })}
+                      title="Hapus karya"
+                      className="absolute top-4 right-4 p-2 rounded-xl text-outlined hover:text-rose-600 hover:bg-rose-50 transition-all opacity-0 group-hover:opacity-100 cursor-pointer z-10"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+
+                  <h3 className="text-lg font-bold text-inverted mb-2 pr-8">{item.title}</h3>
+                  {item.type === 'photo' ? (
+                    item.photos && item.photos.length > 0 ? (
+                      <div className="flex overflow-x-auto gap-2 mb-3 pb-2 scrollbar-hide">
+                        {item.photos.map((ph, idx) => (
+                          <img key={idx} src={ph} alt="Dokumentasi" className="w-40 h-28 object-cover rounded-xl shrink-0 border border-black/5" />
+                        ))}
+                      </div>
+                    ) : (
+                      <img src={item.url} alt="Dokumentasi" className="w-full h-40 object-cover rounded-xl mb-3 border border-black/5" />
+                    )
+                  ) : (
+                    <div className="w-full h-40 flex items-center justify-center bg-black/80 rounded-xl mb-3 relative overflow-hidden">
+                      <Play className="w-12 h-12 text-white/50" />
+                      <a href={item.url} target="_blank" rel="noopener noreferrer" className="absolute inset-0 z-10" aria-label="Play video" />
+                    </div>
+                  )}
+                  <div className="pt-4 border-t border-black/5 flex items-center justify-between mt-auto">
+                    <span className="text-xs font-medium text-primary bg-primary/5 px-2.5 py-1 rounded-md">Oleh {item.studentName}</span>
                   </div>
-                ) : (
-                  <img src={item.url} alt="Dokumentasi" className="w-full h-40 object-cover rounded-xl mb-3 border border-black/5" />
-                )
-              ) : (
-                <div className="w-full h-40 flex items-center justify-center bg-black/80 rounded-xl mb-3 relative overflow-hidden">
-                  <Play className="w-12 h-12 text-white/50" />
-                  <a href={item.url} target="_blank" rel="noopener noreferrer" className="absolute inset-0 z-10" aria-label="Play video" />
-                </div>
-              )}
-              <div className="pt-4 border-t border-black/5 flex items-center justify-between mt-auto">
-                <span className="text-xs font-medium text-primary bg-primary/5 px-2.5 py-1 rounded-md">Oleh {item.studentName}</span>
-              </div>
-            </div>
-          ))
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         )}
       </div>
+
+      {/* Confirmation Dialog Portal */}
+      <AnimatePresence>
+        {deleteTarget && (
+          <DeleteConfirmDialog
+            itemTitle={deleteTarget.title}
+            onConfirm={handleDeleteConfirm}
+            onCancel={() => !isDeleting && setDeleteTarget(null)}
+            isDeleting={isDeleting}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

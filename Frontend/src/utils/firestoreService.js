@@ -258,9 +258,19 @@ export async function addProject(data) {
   return ref.id;
 }
 
-/** Hapus proyek (hanya Admin). */
+/**
+ * Hapus proyek — boleh dipanggil oleh pemilik (userId) atau admin.
+ * Keamanan dijaga oleh Firestore Security Rules.
+ * @param {string} projectId
+ * @throws {Error} jika user tidak memiliki izin
+ */
 export async function deleteProject(projectId) {
-  await deleteDoc(doc(db, COL.PROJECTS, projectId));
+  try {
+    await deleteDoc(doc(db, COL.PROJECTS, projectId));
+  } catch (err) {
+    console.error('[firestoreService] deleteProject gagal:', err);
+    throw err;
+  }
 }
 
 
@@ -296,9 +306,19 @@ export async function addAchievement(data) {
   return ref.id;
 }
 
-/** Hapus prestasi (hanya Admin). */
+/**
+ * Hapus prestasi — boleh dipanggil oleh pemilik (userId) atau admin.
+ * Keamanan dijaga oleh Firestore Security Rules.
+ * @param {string} achievementId
+ * @throws {Error} jika user tidak memiliki izin
+ */
 export async function deleteAchievement(achievementId) {
-  await deleteDoc(doc(db, COL.ACHIEVEMENTS, achievementId));
+  try {
+    await deleteDoc(doc(db, COL.ACHIEVEMENTS, achievementId));
+  } catch (err) {
+    console.error('[firestoreService] deleteAchievement gagal:', err);
+    throw err;
+  }
 }
 
 
@@ -321,9 +341,32 @@ export async function addCinematography(data) {
   return ref.id;
 }
 
-/** Hapus item sinematografi (hanya Admin). */
+/**
+ * [REAL-TIME] Subscribe ke koleksi cinematography.
+ * Digunakan di Cinematography.jsx untuk pembaruan instan.
+ * @param {Function} callback
+ * @returns {Function} unsubscribe
+ */
+export function subscribeToCinematography(callback) {
+  return onSnapshot(collection(db, COL.CINEMATOGRAPHY), (snapshot) => {
+    const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    callback(items);
+  });
+}
+
+/**
+ * Hapus item sinematografi — boleh dipanggil oleh pemilik (userId) atau admin.
+ * Keamanan dijaga oleh Firestore Security Rules.
+ * @param {string} id
+ * @throws {Error} jika user tidak memiliki izin
+ */
 export async function deleteCinematography(id) {
-  await deleteDoc(doc(db, COL.CINEMATOGRAPHY, id));
+  try {
+    await deleteDoc(doc(db, COL.CINEMATOGRAPHY, id));
+  } catch (err) {
+    console.error('[firestoreService] deleteCinematography gagal:', err);
+    throw err;
+  }
 }
 
 
@@ -421,10 +464,13 @@ export async function approvePending(pendingItem) {
   if (!targetCol) throw new Error(`Tipe tidak dikenal: ${pendingItem.type}`);
 
   // 1. Tambah ke koleksi tujuan
+  //    Sertakan `userId` agar Security Rules bisa memvalidasi kepemilikan
+  //    saat owner atau admin ingin menghapus/mengupdate item yang sudah disetujui.
   const newRef = doc(collection(db, targetCol));
   batch.set(newRef, {
     ...pendingItem.data,
-    approvedAt: serverTimestamp(),
+    userId:      pendingItem.studentId,   // ← KUNCI: dipakai oleh Security Rules
+    approvedAt:  serverTimestamp(),
     submittedBy: pendingItem.studentId,
   });
 

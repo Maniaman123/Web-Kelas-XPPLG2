@@ -9,7 +9,11 @@ export default defineConfig({
   plugins: [
     tailwindcss(),
     react(),
-    babel({ presets: [reactCompilerPreset()] })
+    babel({
+      presets: [reactCompilerPreset()],
+      include: [/src\/.*\.[jt]sx?$/],
+      exclude: [/node_modules/]
+    })
   ],
   build: {
     chunkSizeWarningLimit: 800,
