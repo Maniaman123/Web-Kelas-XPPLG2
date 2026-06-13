@@ -46,6 +46,7 @@ const COL = {
   CINEMATOGRAPHY: 'cinematography',
   PENDING:        'pendingItems',
   SCHEDULE:       'schedule',
+  CATEGORIES:     'categories',
 };
 
 
@@ -600,4 +601,58 @@ export async function seedSchedule(scheduleArray) {
     });
   });
   await batch.commit();
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CATEGORIES COLLECTION
+// Koleksi `categories` menyimpan kategori konten yang dikelola Admin.
+// Setiap dokumen: { name: string, module: 'projects'|'achievements'|'cinematography' }
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * [REAL-TIME] Subscribe ke koleksi categories.
+ * Digunakan di form upload dan Admin Dashboard untuk sinkronisasi instan.
+ *
+ * @param {Function} callback - Dipanggil dengan array category objects setiap ada perubahan
+ * @returns {Function} Fungsi unsubscribe — panggil saat komponen unmount
+ */
+export function subscribeToCategories(callback) {
+  const q = query(
+    collection(db, COL.CATEGORIES),
+    orderBy('module', 'asc'),
+    orderBy('name',   'asc')
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    const categories = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    callback(categories);
+  });
+}
+
+/**
+ * Tambah kategori baru ke Firestore.
+ * Hanya Admin yang bisa memanggil ini (dijaga via Firestore Security Rules).
+ *
+ * @param {string} name   - Nama kategori, misal "Web Development"
+ * @param {string} module - Target modul: 'projects' | 'achievements' | 'cinematography'
+ * @returns {Promise<string>} ID dokumen yang baru dibuat
+ */
+export async function addCategory(name, module) {
+  const ref = await addDoc(collection(db, COL.CATEGORIES), {
+    name:      name.trim(),
+    module,
+    createdAt: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+/**
+ * Hapus kategori dari Firestore.
+ * Hanya Admin yang bisa memanggil ini (dijaga via Firestore Security Rules).
+ *
+ * @param {string} categoryId - ID dokumen kategori
+ */
+export async function deleteCategory(categoryId) {
+  await deleteDoc(doc(db, COL.CATEGORIES, categoryId));
 }

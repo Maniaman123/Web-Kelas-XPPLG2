@@ -7,6 +7,7 @@ import {
   submitPending,
   deleteCinematography,
   updateCinematography,
+  subscribeToCategories,
 } from '../utils/firestoreService';
 import {
   Camera, Plus, Play, Clock, Upload, X,
@@ -15,7 +16,6 @@ import {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const MAX_FILE_MB  = 2;
-const CATEGORIES   = ['Film Pendek', 'Dokumentasi', 'Tutorial / Edukasi', 'Seni & Kreatif'];
 
 const BADGE_STYLES = {
   'Film Pendek':        'bg-violet-500/80 text-white border-violet-400/50',
@@ -52,7 +52,7 @@ function DeleteConfirmDialog({ itemTitle, onConfirm, onCancel, isDeleting }) {
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
         transition={{ type: 'spring', stiffness: 360, damping: 28 }}
-        className="bg-[#1a2c2d] border border-white/10 rounded-3xl shadow-2xl p-7 max-w-sm w-full"
+        className="bg-primary-dark border border-white/10 rounded-3xl shadow-2xl p-7 max-w-sm w-full"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 mb-4">
@@ -66,7 +66,7 @@ function DeleteConfirmDialog({ itemTitle, onConfirm, onCancel, isDeleting }) {
         </div>
 
         <p className="text-sm text-white/60 mb-6 leading-relaxed">
-          Karya <span className="font-semibold text-[#DCEEFA]">"{itemTitle}"</span> akan dihapus secara permanen dari galeri.
+          Karya <span className="font-semibold text-secondary">"{itemTitle}"</span> akan dihapus secara permanen dari galeri.
         </p>
 
         <div className="flex gap-3">
@@ -94,9 +94,9 @@ function DeleteConfirmDialog({ itemTitle, onConfirm, onCancel, isDeleting }) {
 }
 
 // ── Edit Dialog ───────────────────────────────────────────────────────────────
-function EditCinemaDialog({ item, onSave, onCancel, isSaving }) {
+function EditCinemaDialog({ item, onSave, onCancel, isSaving, categories }) {
   const [title,    setTitle]    = useState(item.title    || '');
-  const [category, setCategory] = useState(item.category || CATEGORIES[0]);
+  const [category, setCategory] = useState(item.category || (categories[0]?.name || ''));
   const [mediaType, setMediaType] = useState(item.type   || 'photo');
   const [photos,   setPhotos]   = useState(
     item.photos?.length > 0 ? item.photos : (item.type === 'photo' && item.url ? [item.url] : [])
@@ -153,11 +153,11 @@ function EditCinemaDialog({ item, onSave, onCancel, isSaving }) {
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 24 }}
         transition={{ type: 'spring', stiffness: 360, damping: 28 }}
-        className="bg-[#1a2c2d] border border-white/10 rounded-3xl shadow-2xl p-7 w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        className="bg-primary-dark border border-white/10 rounded-3xl shadow-2xl p-7 w-full max-w-lg max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 mb-6">
-          <Pencil className="w-4 h-4 text-[#DCEEFA]" />
+          <Pencil className="w-4 h-4 text-secondary" />
           <h3 className="text-base font-bold text-white">Edit Karya</h3>
         </div>
 
@@ -182,8 +182,8 @@ function EditCinemaDialog({ item, onSave, onCancel, isSaving }) {
               onChange={(e) => setCategory(e.target.value)}
               className={INP}
             >
-              {CATEGORIES.map((cat) => (
-                <option key={cat} value={cat} className="bg-[#1a2c2d] text-white">{cat}</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.name} className="bg-primary-dark text-white">{cat.name}</option>
               ))}
             </select>
           </div>
@@ -199,7 +199,7 @@ function EditCinemaDialog({ item, onSave, onCancel, isSaving }) {
                   onClick={() => handleTypeSwitch(val)}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all cursor-pointer ${
                     mediaType === val
-                      ? 'bg-[#DCEEFA] text-[#243B3C] border-[#DCEEFA]'
+                      ? 'bg-secondary text-primary border-secondary'
                       : 'bg-white/8 text-white/55 border-white/15 hover:bg-white/15'
                   }`}
                 >
@@ -209,7 +209,6 @@ function EditCinemaDialog({ item, onSave, onCancel, isSaving }) {
             </div>
           </div>
 
-          {/* Photo upload */}
           {mediaType === 'photo' && (
             <div>
               <label className={LBL}>
@@ -241,7 +240,6 @@ function EditCinemaDialog({ item, onSave, onCancel, isSaving }) {
             </div>
           )}
 
-          {/* Video URL */}
           {mediaType === 'video' && (
             <div>
               <label className={LBL}>URL Video (YouTube)</label>
@@ -256,7 +254,6 @@ function EditCinemaDialog({ item, onSave, onCancel, isSaving }) {
             </div>
           )}
 
-          {/* Actions */}
           <div className="flex gap-3 pt-1">
             <button
               type="button"
@@ -269,10 +266,10 @@ function EditCinemaDialog({ item, onSave, onCancel, isSaving }) {
             <button
               type="submit"
               disabled={isSaving}
-              className="flex-1 px-4 py-2.5 rounded-xl bg-[#DCEEFA] text-[#243B3C] font-bold hover:bg-white transition-colors cursor-pointer disabled:opacity-70 flex items-center justify-center gap-2"
+              className="flex-1 px-4 py-2.5 rounded-xl bg-secondary text-primary font-bold hover:bg-white transition-colors cursor-pointer disabled:opacity-70 flex items-center justify-center gap-2"
             >
               {isSaving && (
-                <span className="w-4 h-4 border-2 border-[#243B3C]/30 border-t-[#243B3C] rounded-full animate-spin" />
+                <span className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
               )}
               {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
             </button>
@@ -289,19 +286,18 @@ export default function Cinematography() {
 
   const [media,        setMedia]        = useState([]);
   const [pending,      setPending]      = useState([]);
+  const [categories,   setCategories]   = useState([]);
   const [loading,      setLoading]      = useState(true);
   const [showForm,     setShowForm]     = useState(false);
   const [submitted,    setSubmitted]    = useState(false);
 
-  // Form state
   const [title,    setTitle]    = useState('');
-  const [category, setCategory] = useState(CATEGORIES[0]);
+  const [category, setCategory] = useState('');
   const [type,     setType]     = useState('photo');
   const [photos,   setPhotos]   = useState([]);
   const [videoUrl, setVideoUrl] = useState('');
   const [fileError, setFileError] = useState('');
 
-  // Action state
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting,   setIsDeleting]   = useState(false);
   const [editTarget,   setEditTarget]   = useState(null);
@@ -309,7 +305,6 @@ export default function Cinematography() {
 
   const fileInputRef = useRef(null);
 
-  // ── Subscriptions ────────────────────────────────────────────────────────
   useEffect(() => {
     const unsubMedia = subscribeToCinematography((approved) => {
       setMedia(approved);
@@ -320,15 +315,27 @@ export default function Cinematography() {
       'cinematography',
       (items) => setPending(items)
     );
-    return () => { unsubMedia(); unsubPending(); };
+    const unsubCategories = subscribeToCategories((allCats) => {
+      const filtered = allCats.filter((c) => c.module === 'cinematography');
+      setCategories(filtered);
+    });
+    return () => {
+      unsubMedia();
+      unsubPending();
+      unsubCategories();
+    };
   }, [user?.uid]);
 
-  // ── Upload permission check ───────────────────────────────────────────────
+  useEffect(() => {
+    if (categories.length > 0 && !category) {
+      setCategory(categories[0].name);
+    }
+  }, [categories, category]);
+
   const myApprovedCount = media.filter((m) => m.studentId === user?.id).length;
   const myPendingCount  = pending.filter((p) => p.studentId === user?.id).length;
   const canUpload       = isAuthenticated && user?.role === 'student' && (myApprovedCount + myPendingCount) < 1;
 
-  // ── File handling ─────────────────────────────────────────────────────────
   const handleFileChange = (e) => {
     setFileError('');
     const files  = Array.from(e.target.files);
@@ -351,12 +358,11 @@ export default function Cinematography() {
   const removePhoto = (i) => setPhotos((prev) => prev.filter((_, idx) => idx !== i));
 
   const resetForm = () => {
-    setTitle(''); setCategory(CATEGORIES[0]); setType('photo');
+    setTitle(''); setCategory(categories[0]?.name || ''); setType('photo');
     setPhotos([]); setVideoUrl(''); setFileError('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title) return;
@@ -382,7 +388,6 @@ export default function Cinematography() {
     }
   };
 
-  // ── Delete ─────────────────────────────────────────────────────────────────
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
@@ -397,7 +402,6 @@ export default function Cinematography() {
     }
   };
 
-  // ── Edit ───────────────────────────────────────────────────────────────────
   const handleEditSave = async (data) => {
     if (!editTarget) return;
     setIsSaving(true);
@@ -412,16 +416,14 @@ export default function Cinematography() {
     }
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#243B3C] font-sans">
+    <div className="min-h-screen bg-primary font-sans">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
 
-        {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-[#DCEEFA]/10 border border-[#DCEEFA]/20 flex items-center justify-center">
-              <Clapperboard className="w-6 h-6 text-[#DCEEFA]" />
+            <div className="w-12 h-12 rounded-2xl bg-secondary/10 border border-secondary/20 flex items-center justify-center">
+              <Clapperboard className="w-6 h-6 text-secondary" />
             </div>
             <div>
               <h1 className="text-3xl sm:text-4xl font-extrabold text-white leading-tight tracking-tight">
@@ -435,7 +437,7 @@ export default function Cinematography() {
             canUpload ? (
               <button
                 onClick={() => setShowForm((v) => !v)}
-                className="self-start sm:self-auto px-5 py-2.5 rounded-xl bg-[#DCEEFA] text-[#243B3C] font-bold text-sm hover:bg-white transition-all flex items-center gap-2 cursor-pointer shadow-lg shadow-black/20"
+                className="self-start sm:self-auto px-5 py-2.5 rounded-xl bg-secondary text-primary font-bold text-sm hover:bg-white transition-all flex items-center gap-2 cursor-pointer shadow-lg shadow-black/20"
               >
                 <Plus className="w-4 h-4" /> Upload Karya
               </button>
@@ -449,7 +451,6 @@ export default function Cinematography() {
           )}
         </div>
 
-        {/* ── Submitted notice ────────────────────────────────────────────── */}
         {submitted && (
           <motion.div
             initial={{ opacity: 0, y: -8 }}
@@ -465,7 +466,6 @@ export default function Cinematography() {
           </motion.div>
         )}
 
-        {/* ── Upload Form ─────────────────────────────────────────────────── */}
         <AnimatePresence>
           {showForm && (
             <motion.div
@@ -478,7 +478,6 @@ export default function Cinematography() {
               <h2 className="text-lg font-bold text-white mb-5">Upload Karya Baru</h2>
 
               <form onSubmit={handleSubmit} className="space-y-5">
-                {/* Title */}
                 <div>
                   <label className={LBL}>Judul Karya</label>
                   <input
@@ -491,7 +490,6 @@ export default function Cinematography() {
                   />
                 </div>
 
-                {/* Category */}
                 <div>
                   <label className={LBL}>Kategori</label>
                   <select
@@ -499,13 +497,12 @@ export default function Cinematography() {
                     onChange={(e) => setCategory(e.target.value)}
                     className={INP}
                   >
-                    {CATEGORIES.map((cat) => (
-                      <option key={cat} value={cat} className="bg-[#1a2c2d] text-white">{cat}</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.name} className="bg-primary-dark text-white">{cat.name}</option>
                     ))}
                   </select>
                 </div>
 
-                {/* Media type toggle */}
                 <div>
                   <label className={LBL}>Jenis Media</label>
                   <div className="flex gap-2">
@@ -516,7 +513,7 @@ export default function Cinematography() {
                         onClick={() => { setType(val); setPhotos([]); setVideoUrl(''); setFileError(''); }}
                         className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all cursor-pointer ${
                           type === val
-                            ? 'bg-[#DCEEFA] text-[#243B3C] border-[#DCEEFA]'
+                            ? 'bg-secondary text-primary border-secondary'
                             : 'bg-white/8 text-white/55 border-white/15 hover:bg-white/15'
                         }`}
                       >
@@ -590,7 +587,7 @@ export default function Cinematography() {
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2.5 rounded-xl bg-[#DCEEFA] text-[#243B3C] text-sm font-bold hover:bg-white cursor-pointer transition-colors shadow-lg shadow-black/20"
+                    className="px-6 py-2.5 rounded-xl bg-secondary text-primary text-sm font-bold hover:bg-white cursor-pointer transition-colors shadow-lg shadow-black/20"
                   >
                     Kirim untuk Disetujui
                   </button>
@@ -608,7 +605,7 @@ export default function Cinematography() {
               {pending.map((p) => (
                 <div
                   key={p.id}
-                  className="flex-shrink-0 w-52 bg-white/6 border border-white/10 rounded-2xl overflow-hidden"
+                  className="shrink-0 w-52 bg-white/6 border border-white/10 rounded-2xl overflow-hidden"
                 >
                   {/* 16:9 thumbnail */}
                   <div className="relative aspect-video w-full bg-white/5 overflow-hidden">
@@ -674,7 +671,7 @@ export default function Cinematography() {
                     exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
                     whileHover={{ y: -4, scale: 1.01 }}
                     transition={{ type: 'spring', stiffness: 300, damping: 26 }}
-                    className="bg-[#DCEEFA] rounded-3xl overflow-hidden group border border-white/40 shadow-[0_8px_40px_rgba(0,0,0,0.4)] cursor-default"
+                    className="bg-secondary rounded-3xl overflow-hidden group border border-white/40 shadow-[0_8px_40px_rgba(0,0,0,0.4)] cursor-default"
                   >
                     {/* 16:9 Media Cover */}
                     <div className="relative aspect-video w-full overflow-hidden">
@@ -685,7 +682,7 @@ export default function Cinematography() {
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />
                       ) : (
-                        <div className="w-full h-full bg-gradient-to-b from-[#0f1a1b] to-[#243B3C] flex items-center justify-center relative overflow-hidden">
+                        <div className="w-full h-full bg-linear-to-b from-[#0f1a1b] to-primary flex items-center justify-center relative overflow-hidden">
                           {/* Decorative scanlines */}
                           <div
                             aria-hidden="true"
@@ -715,7 +712,7 @@ export default function Cinematography() {
                       )}
 
                       {/* Dark gradient overlay at bottom for badge readability */}
-                      <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+                      <div className="absolute inset-x-0 bottom-0 h-16 bg-linear-to-t from-black/60 to-transparent pointer-events-none" />
 
                       {/* Category badge — bottom left */}
                       {item.category && (
@@ -733,7 +730,7 @@ export default function Cinematography() {
                             <button
                               onClick={() => setEditTarget(item)}
                               title="Edit karya"
-                              className="p-2 rounded-xl bg-black/50 backdrop-blur-sm text-white/70 hover:text-[#DCEEFA] hover:bg-black/70 transition-all cursor-pointer"
+                              className="p-2 rounded-xl bg-black/50 backdrop-blur-sm text-white/70 hover:text-secondary hover:bg-black/70 transition-all cursor-pointer"
                             >
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
@@ -772,18 +769,18 @@ export default function Cinematography() {
 
                     {/* Info panel */}
                     <div className="px-5 pt-4 pb-4">
-                      <h3 className="text-[15px] font-bold text-[#101828] leading-snug mb-3">
+                      <h3 className="text-[15px] font-bold text-inverted leading-snug mb-3">
                         {item.title}
                       </h3>
-                      <div className="flex items-center justify-between border-t border-[#243B3C]/10 pt-3">
-                        <span className="text-xs font-semibold text-[#243B3C]">
+                      <div className="flex items-center justify-between border-t border-primary/10 pt-3">
+                        <span className="text-xs font-semibold text-primary">
                           {item.studentName}
                         </span>
                         <div className="flex items-center gap-1">
                           {isPhoto
-                            ? <Camera className="w-3.5 h-3.5 text-[#243B3C]/40" />
-                            : <Play  className="w-3.5 h-3.5 text-[#243B3C]/40" />}
-                          <span className="text-[10px] text-[#243B3C]/40 font-medium">
+                            ? <Camera className="w-3.5 h-3.5 text-primary/40" />
+                            : <Play  className="w-3.5 h-3.5 text-primary/40" />}
+                          <span className="text-[10px] text-primary/40 font-medium">
                             {isPhoto ? 'Foto' : 'Video'}
                           </span>
                         </div>
@@ -816,6 +813,7 @@ export default function Cinematography() {
             onSave={handleEditSave}
             onCancel={() => !isSaving && setEditTarget(null)}
             isSaving={isSaving}
+            categories={categories}
           />
         )}
       </AnimatePresence>

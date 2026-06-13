@@ -24,6 +24,7 @@ import {
   subscribeToStudents,
   subscribeToPending,
   subscribeToSchedule,
+  subscribeToCategories,
   addStudent,
   deleteStudent,
   createUserDoc,
@@ -32,12 +33,14 @@ import {
   rejectPending,
   updateSchedule,
   seedSchedule,
+  addCategory,
+  deleteCategory,
 } from '../utils/firestoreService';
 import { avatarColors, getInitials } from '../data/students';
 import {
   UserPlus, Trash2, ShieldAlert, CheckCircle, XCircle,
   Clock, Camera, Rocket, Trophy, Loader2,
-  CalendarDays, Pencil, Plus, X, Save, DatabaseZap,
+  CalendarDays, Pencil, Plus, X, Save, DatabaseZap, Tags,
 } from 'lucide-react';
 
 const TYPE_LABELS = {
@@ -119,6 +122,7 @@ export default function AdminDashboard() {
   const [pending,   setPending]   = useState([]);
   const [schedule,  setSchedule]  = useState([]);
   const [activeTab, setActiveTab] = useState('students'); // 'students' | 'approval' | 'schedule'
+  const [categories, setCategories] = useState([]);
 
   // ── Schedule modal state ───────────────────────────────────────────────────
   const [editModal,    setEditModal]    = useState(false);
@@ -127,6 +131,12 @@ export default function AdminDashboard() {
   const [saveLoading,  setSaveLoading]  = useState(false);
   const [seedLoading,  setSeedLoading]  = useState(false);
   const [seedDone,     setSeedDone]     = useState(false);
+
+  // Category form state
+  const [catName,     setCatName]     = useState('');
+  const [catModule,   setCatModule]   = useState('projects');
+  const [catAdding,   setCatAdding]   = useState(false);
+  const [catDeleteId, setCatDeleteId] = useState(null);
 
   // ── Form state ─────────────────────────────────────────────────────────────
   const [name,         setName]         = useState('');
@@ -149,11 +159,13 @@ export default function AdminDashboard() {
     const unsubStudents = subscribeToStudents(setStudents);
     const unsubPending  = subscribeToPending(setPending);
     const unsubSchedule = subscribeToSchedule(setSchedule);
+    const unsubCategories = subscribeToCategories(setCategories);
 
     return () => {
       unsubStudents();
       unsubPending();
       unsubSchedule();
+      unsubCategories();
     };
   }, [isAuthenticated, user?.role]);
 
@@ -303,6 +315,36 @@ export default function AdminDashboard() {
     }
   }, []);
 
+  // ── Category handlers ──────────────────────────────────────────────────────
+  const handleAddCategory = useCallback(async (e) => {
+    e.preventDefault();
+    const trimmed = catName.trim();
+    if (!trimmed) return;
+    setCatAdding(true);
+    try {
+      await addCategory(trimmed, catModule);
+      setCatName('');
+    } catch (err) {
+      console.error('[AdminDashboard] Gagal tambah kategori:', err);
+      alert('Gagal menambah kategori. Periksa koneksi dan coba lagi.');
+    } finally {
+      setCatAdding(false);
+    }
+  }, [catName, catModule]);
+
+  const handleDeleteCategory = useCallback(async (id) => {
+    if (!window.confirm('Yakin ingin menghapus kategori ini?')) return;
+    setCatDeleteId(id);
+    try {
+      await deleteCategory(id);
+    } catch (err) {
+      console.error('[AdminDashboard] Gagal hapus kategori:', err);
+      alert('Gagal menghapus kategori.');
+    } finally {
+      setCatDeleteId(null);
+    }
+  }, []);
+
   // ── Guard render ──────────────────────────────────────────────────────────
   if (!isAuthenticated || user?.role !== 'admin') return null;
 
@@ -356,6 +398,20 @@ export default function AdminDashboard() {
         >
           <CalendarDays className="w-4 h-4" />
           Jadwal
+        </button>
+        <button
+          onClick={() => setActiveTab('categories')}
+          className={`px-5 py-2.5 text-sm font-semibold rounded-t-xl transition-colors -mb-px border-b-2 flex items-center gap-2 ${
+            activeTab === 'categories'
+              ? 'text-primary border-primary bg-white'
+              : 'text-outlined border-transparent hover:text-inverted'
+          }`}
+        >
+          <Tags className="w-4 h-4" />
+          Kategori
+          <span className="ml-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
+            {categories.length}
+          </span>
         </button>
       </div>
 
@@ -800,6 +856,133 @@ export default function AdminDashboard() {
               </>
             )}
           </AnimatePresence>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          TAB: CATEGORIES
+      ═══════════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'categories' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+          {/* Add category form */}
+          <div className="bg-secondary rounded-3xl p-6 h-fit border border-secondary-dark/30">
+            <h2 className="text-xl font-bold text-inverted mb-1 flex items-center gap-2">
+              <Tags className="w-5 h-5 text-primary" /> Kelola Kategori Konten
+            </h2>
+            <p className="text-xs text-outlined mb-6">
+              Kategori digunakan sebagai opsi dropdown di form upload Proyek, Prestasi, dan Sinematografi.
+            </p>
+
+            <form onSubmit={handleAddCategory} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-inverted mb-1">Nama Kategori</label>
+                <input
+                  type="text"
+                  value={catName}
+                  onChange={(e) => setCatName(e.target.value)}
+                  placeholder="Contoh: Web Development"
+                  className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-inverted mb-1">Modul Target</label>
+                <select
+                  value={catModule}
+                  onChange={(e) => setCatModule(e.target.value)}
+                  className="w-full px-4 py-2 rounded-xl border border-black/10 focus:border-primary outline-none text-sm"
+                >
+                  <option value="projects">🚀 Proyek</option>
+                  <option value="achievements">🏆 Prestasi</option>
+                  <option value="cinematography">🎬 Sinematografi</option>
+                </select>
+              </div>
+
+              <button
+                type="submit"
+                disabled={catAdding || !catName.trim()}
+                className="w-full py-3 mt-1 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                {catAdding
+                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Menambah...</>
+                  : <><Plus className="w-4 h-4" /> Tambah Kategori</>}
+              </button>
+            </form>
+          </div>
+
+          {/* Category list */}
+          <div className="lg:col-span-2 bg-white rounded-3xl p-6 shadow-sm border border-black/5">
+            <h2 className="text-xl font-bold text-inverted mb-1">
+              Daftar Kategori
+              <span className="ml-2 text-xs font-normal text-outlined">• live</span>
+            </h2>
+            <p className="text-xs text-outlined mb-6">
+              {categories.length} kategori tersimpan di Firestore.
+            </p>
+
+            {categories.length === 0 ? (
+              <div className="py-16 text-center border-2 border-dashed border-black/10 rounded-2xl text-outlined">
+                <Tags className="w-8 h-8 mx-auto mb-3 opacity-30" />
+                <p className="text-sm">Belum ada kategori.</p>
+                <p className="text-xs mt-1">Tambah kategori pertama menggunakan form di sebelah kiri.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {['projects', 'achievements', 'cinematography'].map((mod) => {
+                  const group = categories.filter((c) => c.module === mod);
+                  if (group.length === 0) return null;
+
+                  const moduleLabel = {
+                    projects:       '🚀 Proyek',
+                    achievements:   '🏆 Prestasi',
+                    cinematography: '🎬 Sinematografi',
+                  }[mod];
+
+                  const moduleBg = {
+                    projects:       'bg-emerald-50 border-emerald-200',
+                    achievements:   'bg-amber-50 border-amber-200',
+                    cinematography: 'bg-violet-50 border-violet-200',
+                  }[mod];
+
+                  const labelColor = {
+                    projects:       'text-emerald-700',
+                    achievements:   'text-amber-700',
+                    cinematography: 'text-violet-700',
+                  }[mod];
+
+                  return (
+                    <div key={mod} className="mb-5">
+                      <p className={`text-xs font-bold uppercase tracking-wider mb-2 ${labelColor}`}>
+                        {moduleLabel}
+                      </p>
+                      <div className="space-y-1.5">
+                        {group.map((cat) => (
+                          <div
+                            key={cat.id}
+                            className={`flex items-center justify-between px-4 py-2.5 rounded-xl border ${moduleBg}`}
+                          >
+                            <span className="text-sm font-medium text-inverted">{cat.name}</span>
+                            <button
+                              onClick={() => handleDeleteCategory(cat.id)}
+                              disabled={catDeleteId === cat.id}
+                              className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors disabled:opacity-50"
+                              title="Hapus kategori"
+                            >
+                              {catDeleteId === cat.id
+                                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                : <Trash2 className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

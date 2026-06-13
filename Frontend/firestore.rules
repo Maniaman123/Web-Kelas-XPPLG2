@@ -99,6 +99,16 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ── Categories Collection ──────────────────────────────────────────────
+    // Public read → semua pengguna (termasuk tamu) bisa membaca daftar
+    // kategori agar form upload bisa merender opsi dropdown secara dinamis.
+    // Write (create, update, delete) → hanya Admin yang bisa mengelola.
+    match /categories/{categoryId} {
+      allow read:   if true;
+      allow write:  if request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
     // ── Helper Functions ───────────────────────────────────────────────────
 
     /**

@@ -1,10 +1,10 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { gsap } from 'gsap';
+import { useDeviceTier } from '../hooks/useDeviceTier';
 
 const DEFAULT_PARTICLE_COUNT = 12;
 const DEFAULT_SPOTLIGHT_RADIUS = 300;
 const DEFAULT_GLOW_COLOR = '100, 200, 255';
-const MOBILE_BREAKPOINT = 768;
 
 // ---------- Card data customised for X PPLG 2 ----------
 const cardData = [
@@ -87,6 +87,7 @@ const updateCardGlowProperties = (card, mouseX, mouseY, glow, radius) => {
 };
 
 // ---------- ParticleCard ----------
+// On low-end devices, this renders as a plain div with GPU compositing only.
 const ParticleCard = ({
   children,
   className = '',
@@ -245,7 +246,11 @@ const ParticleCard = ({
   }, [animateParticles, clearAllParticles, disableAnimations, enableTilt, enableMagnetism, clickEffect, glowColor]);
 
   return (
-    <div ref={cardRef} className={`${className} relative overflow-hidden`} style={{ ...style, position: 'relative', overflow: 'hidden' }}>
+    <div
+      ref={cardRef}
+      className={`${className} relative overflow-hidden transform-gpu`}
+      style={{ ...style, position: 'relative', overflow: 'hidden', willChange: disableAnimations ? 'auto' : 'transform' }}
+    >
       {children}
     </div>
   );
@@ -320,11 +325,12 @@ const GlobalSpotlight = ({ gridRef, disableAnimations = false, enabled = true, s
   return null;
 };
 
-// ---------- Mobile detection ----------
+// Kept for backwards-compatibility if other files import it.
+// New code should use useDeviceTier directly.
 const useMobileDetection = () => {
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth <= MOBILE_BREAKPOINT);
+    const check = () => setIsMobile(window.innerWidth < 768);
     check();
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
@@ -347,10 +353,14 @@ const MagicBento = ({
   enableMagnetism = true
 }) => {
   const gridRef = useRef(null);
-  const isMobile = useMobileDetection();
-  const shouldDisableAnimations = disableAnimations || isMobile;
+  const { isLowEnd } = useDeviceTier();
+  // On low-end devices: skip ALL GSAP effects — particles, tilt, magnetism, spotlight.
+  // The cards still render correctly; only the heavy mouse-tracking JS is disabled.
+  const shouldDisableAnimations = disableAnimations || isLowEnd;
 
-  const baseCardClass = `mb-card flex flex-col justify-between relative min-h-[160px] w-full p-5 rounded-2xl border border-solid font-light overflow-hidden transition-all duration-300 ease-in-out hover:-translate-y-0.5 cursor-pointer ${enableBorderGlow ? 'mb-card--border-glow' : ''}`;
+  // transform-gpu forces the card onto its own GPU compositing layer — eliminates
+  // paint-during-scroll on all devices, even when GSAP effects are disabled.
+  const baseCardClass = `mb-card transform-gpu flex flex-col justify-between relative min-h-[160px] w-full p-5 rounded-2xl border border-solid font-light overflow-hidden transition-all duration-300 ease-in-out hover:-translate-y-0.5 cursor-pointer ${enableBorderGlow && !shouldDisableAnimations ? 'mb-card--border-glow' : ''}`;
 
   const cardStyle = (card) => ({
     backgroundColor: card.color,
@@ -389,11 +399,13 @@ const MagicBento = ({
         }
       `}</style>
 
-      {enableSpotlight && (
+      {/* Spotlight is a global mousemove listener — skipped entirely on low-end
+           to avoid per-frame DOM reads (getBoundingClientRect × N cards). */}
+      {enableSpotlight && !shouldDisableAnimations && (
         <GlobalSpotlight
           gridRef={gridRef}
-          disableAnimations={shouldDisableAnimations}
-          enabled={enableSpotlight}
+          disableAnimations={false}
+          enabled={true}
           spotlightRadius={spotlightRadius}
           glowColor={glowColor}
         />
@@ -439,9 +451,11 @@ const MagicBento = ({
                   disableAnimations={shouldDisableAnimations}
                   particleCount={particleCount}
                   glowColor={glowColor}
-                  enableTilt={enableTilt}
-                  clickEffect={clickEffect}
-                  enableMagnetism={enableMagnetism}
+                  // On low-end, tilt/magnetism are disabled to prevent 3D perspective
+                  // repaints on every mousemove event.
+                  enableTilt={shouldDisableAnimations ? false : enableTilt}
+                  clickEffect={shouldDisableAnimations ? false : clickEffect}
+                  enableMagnetism={shouldDisableAnimations ? false : enableMagnetism}
                 >
                   {content}
                 </ParticleCard>

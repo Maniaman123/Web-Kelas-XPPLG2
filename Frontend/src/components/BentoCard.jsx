@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { gsap } from 'gsap';
+import { useDeviceTier } from '../hooks/useDeviceTier';
 
 // Primary brand color = Deep Teal #243B3C → used as glow
 const GLOW_R = 36;
@@ -20,6 +21,11 @@ export default function BentoCard({
   enableBorderGlow = true,
 }) {
   const cardRef = useRef(null);
+  const { isLowEnd } = useDeviceTier();
+  // Disable tilt on low-end to avoid per-mousemove getBoundingClientRect + GSAP call
+  const tiltActive  = enableTilt && !isLowEnd;
+  // Disable cursor glow on low-end (radial-gradient repaint per frame is expensive)
+  const glowActive  = enableBorderGlow && !isLowEnd;
 
   const spanClasses = [
     colSpan === 2 ? 'md:col-span-2' : '',
@@ -42,6 +48,10 @@ export default function BentoCard({
     el.style.setProperty('--gy', '50%');
     el.style.setProperty('--gi', '0');
 
+    // On low-end: skip all mousemove listeners entirely.
+    // This alone removes a significant source of frame drops during scroll and hover.
+    if (isLowEnd) return;
+
     const handleMouseMove = (e) => {
       const rect = el.getBoundingClientRect();
       const x = e.clientX - rect.left;
@@ -50,7 +60,7 @@ export default function BentoCard({
       el.style.setProperty('--gy', `${(y / rect.height) * 100}%`);
       el.style.setProperty('--gi', '1');
 
-      if (enableTilt) {
+      if (tiltActive) {
         const cx = rect.width / 2, cy = rect.height / 2;
         gsap.to(el, {
           rotateX: ((y - cy) / cy) * -5,
@@ -64,7 +74,7 @@ export default function BentoCard({
 
     const handleMouseLeave = () => {
       el.style.setProperty('--gi', '0');
-      if (enableTilt) {
+      if (tiltActive) {
         gsap.to(el, { rotateX: 0, rotateY: 0, duration: 0.4, ease: 'power2.out' });
       }
     };
@@ -75,19 +85,24 @@ export default function BentoCard({
       el.removeEventListener('mousemove',  handleMouseMove);
       el.removeEventListener('mouseleave', handleMouseLeave);
     };
-  }, [enableTilt]);
+  }, [isLowEnd, tiltActive]);
 
   return (
     <motion.div
       ref={cardRef}
       id={id}
       data-magic-card
-      initial={{ opacity: 0, y: 20 }}
+      // High-end: slide up from y:20 with easeOut (visible depth cue)
+      // Low-end: opacity-only fade, linear 200ms — GPU-compositable, zero layout cost
+      initial={{ opacity: 0, y: isLowEnd ? 0 : 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-50px' }}
-      transition={{ duration: 0.5, ease: 'easeOut' }}
+      transition={isLowEnd
+        ? { duration: 0.2, ease: 'linear' }
+        : { duration: 0.5, ease: 'easeOut' }
+      }
       className={`
-        relative overflow-hidden
+        relative overflow-hidden transform-gpu
         rounded-3xl border shadow-sm
         hover:shadow-lg hover:-translate-y-1
         transition-all duration-300 ease-out
@@ -97,8 +112,8 @@ export default function BentoCard({
         ${className}
       `}
     >
-      {/* ── Inner radial glow follows cursor ── */}
-      {enableBorderGlow && (
+      {/* ── Inner radial glow follows cursor — disabled on low-end ── */}
+      {glowActive && (
         <div
           aria-hidden="true"
           style={{
@@ -119,8 +134,8 @@ export default function BentoCard({
         />
       )}
 
-      {/* ── Border ring glow (mask technique) ── */}
-      {enableBorderGlow && (
+      {/* ── Border ring glow (mask technique) — disabled on low-end ── */}
+      {glowActive && (
         <div
           aria-hidden="true"
           style={{

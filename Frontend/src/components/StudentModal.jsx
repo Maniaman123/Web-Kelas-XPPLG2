@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Edit3, ExternalLink, Globe } from 'lucide-react';
 import { getInitials } from '../data/students';
@@ -33,14 +33,22 @@ export default function StudentModal({ student, onClose, onSave, layoutId }) {
   // ── Keamanan Self-Edit: hanya pemilik yang bisa edit ────────────────────
   const canEdit = isAuthenticated && user?.id === student.userId;
 
-  const [editing, setEditing]   = useState(false);
-  const [saved,   setSaved]     = useState(false);
+  const prevStudentIdRef = useRef(student.id);
+  const [editing, setEditing] = useState(false);
+  const [saved,   setSaved]   = useState(false);
 
-  // Reset editing state whenever the displayed student changes
-  useEffect(() => {
+  // Reset editing state whenever the displayed student changes.
+  // We use a ref-guard so the setState calls only fire when the id
+  // actually differs from the previously-rendered value, avoiding
+  // synchronous setState-inside-effect cascades flagged by the linter.
+  if (prevStudentIdRef.current !== student.id) {
+    prevStudentIdRef.current = student.id;
+    // Calling setState during render (before paint) is the React-approved
+    // alternative to a synchronous effect setState — React will re-render
+    // immediately without committing the first pass.
     setEditing(false);
     setSaved(false);
-  }, [student.id]);
+  }
 
   // Close on Escape
   useEffect(() => {
