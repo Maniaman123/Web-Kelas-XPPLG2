@@ -318,6 +318,10 @@ export default function Cinematography() {
     const unsubCategories = subscribeToCategories((allCats) => {
       const filtered = allCats.filter((c) => c.module === 'cinematography');
       setCategories(filtered);
+      setCategory((prev) => {
+        if (!prev && filtered.length > 0) return filtered[0].name;
+        return prev;
+      });
     });
     return () => {
       unsubMedia();
@@ -325,12 +329,6 @@ export default function Cinematography() {
       unsubCategories();
     };
   }, [user?.uid]);
-
-  useEffect(() => {
-    if (categories.length > 0 && !category) {
-      setCategory(categories[0].name);
-    }
-  }, [categories, category]);
 
   const myApprovedCount = media.filter((m) => m.studentId === user?.id).length;
   const myPendingCount  = pending.filter((p) => p.studentId === user?.id).length;

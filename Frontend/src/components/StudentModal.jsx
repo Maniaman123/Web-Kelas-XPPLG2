@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Edit3, ExternalLink, Globe } from 'lucide-react';
 import { getInitials } from '../data/students';
@@ -33,19 +33,13 @@ export default function StudentModal({ student, onClose, onSave, layoutId }) {
   // ── Keamanan Self-Edit: hanya pemilik yang bisa edit ────────────────────
   const canEdit = isAuthenticated && user?.id === student.userId;
 
-  const prevStudentIdRef = useRef(student.id);
+  const [prevStudentId, setPrevStudentId] = useState(student.id);
   const [editing, setEditing] = useState(false);
   const [saved,   setSaved]   = useState(false);
 
   // Reset editing state whenever the displayed student changes.
-  // We use a ref-guard so the setState calls only fire when the id
-  // actually differs from the previously-rendered value, avoiding
-  // synchronous setState-inside-effect cascades flagged by the linter.
-  if (prevStudentIdRef.current !== student.id) {
-    prevStudentIdRef.current = student.id;
-    // Calling setState during render (before paint) is the React-approved
-    // alternative to a synchronous effect setState — React will re-render
-    // immediately without committing the first pass.
+  if (student.id !== prevStudentId) {
+    setPrevStudentId(student.id);
     setEditing(false);
     setSaved(false);
   }
@@ -66,15 +60,26 @@ export default function StudentModal({ student, onClose, onSave, layoutId }) {
     setTimeout(() => setSaved(false), 2500);
   };
 
+  // ── Deep Defensive Guards on Mount / Render ───────────────────
+  const initialForm = useMemo(() => ({
+    role: student?.role && typeof student.role === 'object' ? student.role : null,
+    ig: typeof student?.ig === 'string' ? student.ig : '',
+    github: typeof student?.github === 'string' ? student.github : '',
+    about: typeof student?.about === 'string' ? student.about : '',
+  }), [student]);
+
+  const form = initialForm;
+
   const initials    = student.initials || getInitials(student.name);
   const avatarClass = student.avatarColor || 'bg-teal-600';
 
-  const igHref = student.ig
-    ? (student.ig.startsWith('http') ? student.ig : `https://instagram.com/${student.ig}`)
+  const igHref = typeof form.ig === 'string' && form.ig.trim().length > 0
+    ? (form.ig.startsWith('http') ? form.ig : `https://instagram.com/${form.ig}`)
     : null;
-  const ghHref = student.github
-    ? (student.github.startsWith('http') ? student.github : `https://github.com/${student.github}`)
+  const ghHref = typeof form.github === 'string' && form.github.trim().length > 0
+    ? (form.github.startsWith('http') ? form.github : `https://github.com/${form.github}`)
     : null;
+
 
   return (
     <>
@@ -159,9 +164,9 @@ export default function StudentModal({ student, onClose, onSave, layoutId }) {
                 </div>
 
                 {/* ── Role ── */}
-                {student.role && (
-                  <span className={`self-start px-3 py-1.5 rounded-xl text-xs font-semibold ${student.role.color}`}>
-                    {student.role.label}
+                {form.role?.label && form.role?.color && (
+                  <span className={`self-start px-3 py-1.5 rounded-xl text-xs font-semibold ${form.role.color}`}>
+                    {form.role.label}
                   </span>
                 )}
 
@@ -171,8 +176,8 @@ export default function StudentModal({ student, onClose, onSave, layoutId }) {
                     style={{ color: `${TEAL}80` }}>About Me</p>
                   <p className="text-sm leading-relaxed"
                     style={{ color: `${TEAL}cc`, wordBreak: 'break-word' }}>
-                    {student.about
-                      ? student.about.split(' ').slice(0, 200).join(' ')
+                    {typeof form.about === 'string' && form.about.trim().length > 0
+                      ? form.about.split(' ').slice(0, 200).join(' ')
                       : <span style={{ color: `${TEAL}50` }}>Belum ada deskripsi.</span>}
                   </p>
                 </div>

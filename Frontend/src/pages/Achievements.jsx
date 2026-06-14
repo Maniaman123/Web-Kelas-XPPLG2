@@ -210,15 +210,13 @@ export default function Achievements() {
     const unsubCategories = subscribeToCategories((allCats) => {
       const filtered = allCats.filter((c) => c.module === 'achievements');
       setCategories(filtered);
+      setCategory((prev) => {
+        if (!prev && filtered.length > 0) return filtered[0].name;
+        return prev;
+      });
     });
     return () => { unsubAchievements(); unsubPending(); unsubCategories(); };
   }, [user?.uid]);
-
-  useEffect(() => {
-    if (categories.length > 0 && !category) {
-      setCategory(categories[0].name);
-    }
-  }, [categories, category]);
 
   // ── File Handling ──────────────────────────────────────────────────────────
   const handleFileChange = (e) => {

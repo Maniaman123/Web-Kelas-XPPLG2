@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, forwardRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Users, User, Code2, UserX, SearchX } from 'lucide-react';
 import { gsap } from 'gsap';
@@ -33,10 +33,20 @@ const GithubIcon = ({ className }) => (
 // ─────────────────────────────────────────────
 // MAGIC BENTO TILE — GSAP tilt + Framer layoutId
 // ─────────────────────────────────────────────
-function MagicTile({ children, onClick, layoutId }) {
+const MagicTile = forwardRef(({ children, onClick, layoutId, ...props }, ref) => {
   // gsapRef → plain div that GSAP tilts (no Framer conflict)
   const gsapRef = useRef(null);
   const magRef  = useRef(null);
+
+  // Combine refs so that both gsapRef and Framer's exit ref are attached to the element
+  const setRefs = (node) => {
+    gsapRef.current = node;
+    if (typeof ref === 'function') {
+      ref(node);
+    } else if (ref) {
+      ref.current = node;
+    }
+  };
 
   useEffect(() => {
     const el = gsapRef.current;
@@ -72,8 +82,12 @@ function MagicTile({ children, onClick, layoutId }) {
   }, []);
 
   return (
-    // Plain div: receives GSAP 3D tilt — no Framer transform conflict
-    <div ref={gsapRef} className="cursor-pointer" onClick={onClick}>
+    <motion.div
+      ref={setRefs}
+      className="cursor-pointer"
+      onClick={onClick}
+      {...props}
+    >
       {/* motion.div: Framer layout card — NO initial/animate when using layoutId */}
       <motion.div
         layoutId={layoutId}
@@ -105,9 +119,10 @@ function MagicTile({ children, onClick, layoutId }) {
         }} />
         <div className="relative z-1">{children}</div>
       </motion.div>
-    </div>
+    </motion.div>
   );
-}
+});
+
 
 // ─────────────────────────────────────────────
 // DEVELOPER CARD — uses real storage schema
@@ -143,7 +158,7 @@ function DevCard({ student }) {
           <p className="text-sm font-bold leading-tight truncate" style={{ color: TEAL }}>
             {student.name}
           </p>
-          {student.role && (
+          {student.role && typeof student.role === 'object' && student.role.label && student.role.color && (
             <span className={`inline-block mt-0.5 px-2 py-0.5 rounded-md text-[9px] font-semibold ${student.role.color}`}>
               {student.role.label}
             </span>
@@ -176,7 +191,7 @@ function DevCard({ student }) {
           {student.gender === 'L' ? 'Laki-Laki' : 'Perempuan'}
         </span>
         <div className="flex gap-1.5">
-          {student.ig && (
+          {typeof student.ig === 'string' && student.ig.trim().length > 0 && (
             <a
               href={student.ig.startsWith('http') ? student.ig : `https://instagram.com/${student.ig}`}
               target="_blank" rel="noreferrer"
@@ -187,7 +202,7 @@ function DevCard({ student }) {
               <Instagram className="w-3.5 h-3.5" style={{ color: TEAL }} />
             </a>
           )}
-          {student.github && (
+          {typeof student.github === 'string' && student.github.trim().length > 0 && (
             <a
               href={student.github.startsWith('http') ? student.github : `https://github.com/${student.github}`}
               target="_blank" rel="noreferrer"
