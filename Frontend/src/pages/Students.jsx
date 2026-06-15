@@ -415,7 +415,7 @@ export default function Students() {
                 />
               ))
             ) : filtered.length > 0 ? (
-              filtered.map((student, i) => (
+              filtered.map((student) => (
                 <motion.div
                   key={student.id}
                   layoutId={isLowEnd ? undefined : `card-${student.id}`}
