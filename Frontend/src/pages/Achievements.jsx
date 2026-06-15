@@ -10,6 +10,7 @@ import {
   subscribeToCategories,
 } from '../utils/firestoreService';
 import { Trophy, Plus, Clock, X, Upload, Trash2, AlertTriangle, Pencil } from 'lucide-react';
+import SkeletonCard from '../components/SkeletonCard';
 
 const MAX_FILE_MB = 2;
 
@@ -417,8 +418,8 @@ export default function Achievements() {
       <div className="bg-primary rounded-3xl p-5 sm:p-7">
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="bg-white/8 rounded-3xl h-48 animate-pulse" />
+            {Array.from({ length: 6 }).map((_, i) => (
+              <SkeletonCard key={`achievement-skeleton-${i}`} variant="showcase" />
             ))}
           </div>
         ) : achievements.length === 0 ? (

@@ -6,6 +6,7 @@ import { subscribeToStudents } from '../utils/firestoreService';
 import { getInitials } from '../data/students';
 import StudentModal from '../components/StudentModal';
 import { useDeviceTier } from '../hooks/useDeviceTier';
+import SkeletonCard from '../components/SkeletonCard';
 
 // ─────────────────────────────────────────────
 // THEME TOKENS
@@ -408,11 +409,7 @@ export default function Students() {
             {/* Loading skeleton — tampil saat data Firestore belum datang */}
             {loadingData ? (
               Array.from({ length: 10 }).map((_, i) => (
-                <div
-                  key={`skeleton-${i}`}
-                  className="rounded-2xl animate-pulse"
-                  style={{ background: 'rgba(220,238,250,0.10)', minHeight: 200 }}
-                />
+                <SkeletonCard key={`student-skeleton-${i}`} variant="student" />
               ))
             ) : filtered.length > 0 ? (
               filtered.map((student) => (

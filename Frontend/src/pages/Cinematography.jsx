@@ -13,6 +13,7 @@ import {
   Camera, Plus, Play, Clock, Upload, X,
   Trash2, AlertTriangle, Pencil, Clapperboard,
 } from 'lucide-react';
+import SkeletonCard from '../components/SkeletonCard';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const MAX_FILE_MB  = 2;
@@ -634,13 +635,7 @@ export default function Cinematography() {
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="bg-white/8 rounded-3xl overflow-hidden animate-pulse">
-                <div className="aspect-video w-full bg-white/5" />
-                <div className="p-4 space-y-2">
-                  <div className="h-4 bg-white/10 rounded-lg w-3/4" />
-                  <div className="h-3 bg-white/6 rounded-lg w-1/2" />
-                </div>
-              </div>
+              <SkeletonCard key={`cinema-skeleton-${i}`} variant="showcase" />
             ))}
           </div>
         ) : media.length === 0 ? (

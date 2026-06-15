@@ -10,6 +10,7 @@ import {
   subscribeToCategories,
 } from '../utils/firestoreService';
 import { Rocket, Plus, ExternalLink, Clock, X, Upload, Trash2, AlertTriangle, Pencil } from 'lucide-react';
+import SkeletonCard from '../components/SkeletonCard';
 
 const MAX_FILE_MB = 2;
 
@@ -207,15 +208,13 @@ export default function Projects() {
     const unsubCategories = subscribeToCategories((allCats) => {
       const filtered = allCats.filter((c) => c.module === 'projects');
       setCategories(filtered);
+      setCategory((prev) => {
+        if (!prev && filtered.length > 0) return filtered[0].name;
+        return prev;
+      });
     });
     return () => { unsubProjects(); unsubPending(); unsubCategories(); };
   }, [user?.uid]);
-
-  useEffect(() => {
-    if (categories.length > 0 && !category) {
-      setCategory(categories[0].name);
-    }
-  }, [categories, category]);
 
   // ── File Handling ──────────────────────────────────────────────────────────
   const handleFileChange = (e) => {
@@ -418,7 +417,7 @@ export default function Projects() {
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="bg-white/8 rounded-3xl h-56 animate-pulse" />
+              <SkeletonCard key={`project-skeleton-${i}`} variant="showcase" />
             ))}
           </div>
         ) : projects.length === 0 ? (
