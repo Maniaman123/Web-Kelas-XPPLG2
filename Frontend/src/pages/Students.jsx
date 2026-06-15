@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect, forwardRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Users, User, Code2, UserX, SearchX } from 'lucide-react';
 import { gsap } from 'gsap';
 import { subscribeToStudents } from '../utils/firestoreService';
 import { getInitials } from '../data/students';
 import StudentModal from '../components/StudentModal';
+import { useDeviceTier } from '../hooks/useDeviceTier';
 
 // ─────────────────────────────────────────────
 // THEME TOKENS
@@ -31,22 +32,12 @@ const GithubIcon = ({ className }) => (
 );
 
 // ─────────────────────────────────────────────
-// MAGIC BENTO TILE — GSAP tilt + Framer layoutId
+// MAGIC BENTO TILE — GSAP tilt
 // ─────────────────────────────────────────────
-const MagicTile = forwardRef(({ children, onClick, layoutId, ...props }, ref) => {
+function MagicTile({ children, onClick }) {
   // gsapRef → plain div that GSAP tilts (no Framer conflict)
   const gsapRef = useRef(null);
   const magRef  = useRef(null);
-
-  // Combine refs so that both gsapRef and Framer's exit ref are attached to the element
-  const setRefs = (node) => {
-    gsapRef.current = node;
-    if (typeof ref === 'function') {
-      ref(node);
-    } else if (ref) {
-      ref.current = node;
-    }
-  };
 
   useEffect(() => {
     const el = gsapRef.current;
@@ -82,46 +73,37 @@ const MagicTile = forwardRef(({ children, onClick, layoutId, ...props }, ref) =>
   }, []);
 
   return (
-    <motion.div
-      ref={setRefs}
-      className="cursor-pointer"
+    <div
+      ref={gsapRef}
+      className="cursor-pointer relative overflow-hidden rounded-2xl h-full w-full"
+      style={{ background: AZURE }}
       onClick={onClick}
-      {...props}
     >
-      {/* motion.div: Framer layout card — NO initial/animate when using layoutId */}
-      <motion.div
-        layoutId={layoutId}
-        layout
-        className="relative overflow-hidden rounded-2xl"
-        style={{ background: AZURE }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      >
-        {/* Cursor glow — reads CSS vars from parent gsapRef */}
-        <div aria-hidden style={{
-          position: 'absolute', inset: 0, borderRadius: 'inherit',
-          pointerEvents: 'none', zIndex: 0,
-          opacity: 'var(--gi, 0)', transition: 'opacity 0.3s ease',
-          background: `radial-gradient(220px circle at var(--gx,50%) var(--gy,50%),
-            rgba(${GLOW},0.35) 0%, rgba(${GLOW},0.10) 50%, transparent 75%)`,
-        }} />
-        {/* Border glow */}
-        <div aria-hidden style={{
-          position: 'absolute', inset: 0, borderRadius: 'inherit',
-          pointerEvents: 'none', zIndex: 0,
-          opacity: 'var(--gi, 0)', transition: 'opacity 0.3s ease',
-          padding: '1.5px',
-          background: `radial-gradient(200px circle at var(--gx,50%) var(--gy,50%),
-            rgba(255,255,255,0.9), transparent 70%)`,
-          WebkitMask: 'linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0)',
-          WebkitMaskComposite: 'xor',
-          mask: 'linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0)',
-          maskComposite: 'exclude',
-        }} />
-        <div className="relative z-1">{children}</div>
-      </motion.div>
-    </motion.div>
+      {/* Cursor glow — reads CSS vars from parent gsapRef */}
+      <div aria-hidden style={{
+        position: 'absolute', inset: 0, borderRadius: 'inherit',
+        pointerEvents: 'none', zIndex: 0,
+        opacity: 'var(--gi, 0)', transition: 'opacity 0.3s ease',
+        background: `radial-gradient(220px circle at var(--gx,50%) var(--gy,50%),
+          rgba(${GLOW},0.35) 0%, rgba(${GLOW},0.10) 50%, transparent 75%)`,
+      }} />
+      {/* Border glow */}
+      <div aria-hidden style={{
+        position: 'absolute', inset: 0, borderRadius: 'inherit',
+        pointerEvents: 'none', zIndex: 0,
+        opacity: 'var(--gi, 0)', transition: 'opacity 0.3s ease',
+        padding: '1.5px',
+        background: `radial-gradient(200px circle at var(--gx,50%) var(--gy,50%),
+          rgba(255,255,255,0.9), transparent 70%)`,
+        WebkitMask: 'linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0)',
+        WebkitMaskComposite: 'xor',
+        mask: 'linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0)',
+        maskComposite: 'exclude',
+      }} />
+      <div className="relative z-1 h-full w-full">{children}</div>
+    </div>
   );
-});
+}
 
 
 // ─────────────────────────────────────────────
@@ -282,6 +264,7 @@ function StatBadge({ icon: Icon, label, value }) {
 // MAIN PAGE
 // ─────────────────────────────────────────────
 export default function Students() {
+  const { isLowEnd } = useDeviceTier();
   const [query,           setQuery]           = useState('');
   const [genderFilter,    setGenderFilter]    = useState('all');
   const [students,        setStudents]        = useState([]);
@@ -421,7 +404,7 @@ export default function Students() {
           ref={gridRef}
           className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"
         >
-          <AnimatePresence mode="popLayout">
+          <AnimatePresence mode={isLowEnd ? "wait" : "popLayout"}>
             {/* Loading skeleton — tampil saat data Firestore belum datang */}
             {loadingData ? (
               Array.from({ length: 10 }).map((_, i) => (
@@ -433,14 +416,20 @@ export default function Students() {
               ))
             ) : filtered.length > 0 ? (
               filtered.map((student, i) => (
-                <MagicTile
+                <motion.div
                   key={student.id}
-                  delay={Math.min(i * 0.03, 0.4)}
-                  onClick={() => setSelectedStudent(student)}
-                  layoutId={`card-${student.id}`}
+                  layoutId={isLowEnd ? undefined : `card-${student.id}`}
+                  layout={!isLowEnd}
+                  initial={{ opacity: 0, scale: isLowEnd ? 1 : 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: isLowEnd ? 1 : 0.8 }}
+                  transition={isLowEnd ? { duration: 0.12 } : { type: 'spring', stiffness: 400, damping: 35 }}
+                  className="w-full h-full"
                 >
-                  <DevCard student={student} />
-                </MagicTile>
+                  <MagicTile onClick={() => setSelectedStudent(student)}>
+                    <DevCard student={student} />
+                  </MagicTile>
+                </motion.div>
               ))
             ) : (
               <motion.div
@@ -505,7 +494,7 @@ export default function Students() {
         <StudentModal
           key={selectedStudent.id}
           student={selectedStudent}
-          layoutId={`card-${selectedStudent.id}`}
+          layoutId={isLowEnd ? undefined : `card-${selectedStudent.id}`}
           onClose={() => setSelectedStudent(null)}
           onSave={(updated) => {
             setStudents(prev => prev.map(s => s.id === updated.id ? updated : s));

@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Edit3, ExternalLink, Globe } from 'lucide-react';
 import { getInitials } from '../data/students';
