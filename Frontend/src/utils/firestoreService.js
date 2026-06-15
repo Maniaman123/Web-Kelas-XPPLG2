@@ -611,47 +611,31 @@ export async function seedSchedule(scheduleArray) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * [REAL-TIME] Subscribe ke koleksi categories.
- * Digunakan di form upload dan Admin Dashboard untuk sinkronisasi instan.
- *
- * @param {Function} callback - Dipanggil dengan array category objects setiap ada perubahan
- * @returns {Function} Fungsi unsubscribe — panggil saat komponen unmount
+ * [REAL-TIME] Subscribe ke seluruh koleksi categories.
+ * Digunakan untuk populate dropdown form secara real-time.
  */
 export function subscribeToCategories(callback) {
-  const q = query(
-    collection(db, COL.CATEGORIES),
-    orderBy('module', 'asc'),
-    orderBy('name',   'asc')
-  );
-
-  return onSnapshot(q, (snapshot) => {
-    const categories = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return onSnapshot(collection(db, COL.CATEGORIES), (snapshot) => {
+    const categories = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
     callback(categories);
   });
 }
 
 /**
- * Tambah kategori baru ke Firestore.
- * Hanya Admin yang bisa memanggil ini (dijaga via Firestore Security Rules).
- *
- * @param {string} name   - Nama kategori, misal "Web Development"
- * @param {string} module - Target modul: 'projects' | 'achievements' | 'cinematography'
- * @returns {Promise<string>} ID dokumen yang baru dibuat
+ * Tambah kategori baru (Hanya bisa dijalankan oleh Admin).
+ * @param {Object} data - { name: string, module: 'projects'|'achievements'|'cinematography' }
  */
-export async function addCategory(name, module) {
+export async function addCategory(data) {
   const ref = await addDoc(collection(db, COL.CATEGORIES), {
-    name:      name.trim(),
-    module,
+    ...data,
     createdAt: serverTimestamp(),
   });
   return ref.id;
 }
 
 /**
- * Hapus kategori dari Firestore.
- * Hanya Admin yang bisa memanggil ini (dijaga via Firestore Security Rules).
- *
- * @param {string} categoryId - ID dokumen kategori
+ * Hapus kategori dari database (Hanya bisa dijalankan oleh Admin).
+ * @param {string} categoryId
  */
 export async function deleteCategory(categoryId) {
   await deleteDoc(doc(db, COL.CATEGORIES, categoryId));
