@@ -623,11 +623,13 @@ export function subscribeToCategories(callback) {
 
 /**
  * Tambah kategori baru (Hanya bisa dijalankan oleh Admin).
- * @param {Object} data - { name: string, module: 'projects'|'achievements'|'cinematography' }
+ * @param {string} name
+ * @param {string} module
  */
-export async function addCategory(data) {
+export async function addCategory(name, module) {
   const ref = await addDoc(collection(db, COL.CATEGORIES), {
-    ...data,
+    name: name.trim(),
+    module,
     createdAt: serverTimestamp(),
   });
   return ref.id;
