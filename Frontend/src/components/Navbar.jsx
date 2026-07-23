@@ -75,7 +75,7 @@ export default function Navbar() {
                 )}
                 <div className="leading-tight">
                   <span className="text-base sm:text-lg font-extrabold tracking-tight" style={{ color: '#101828' }}>
-                    X<span style={{ color: '#243B3C' }}> PPLG 2</span>
+                    XI<span style={{ color: '#243B3C' }}> PPLG 2</span>
                   </span>
                   <p className="hidden sm:block text-[9px] font-medium tracking-widest uppercase" style={{ color: '#667085' }}>
                     SMK Negeri 1 Ciomas

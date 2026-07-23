@@ -11,7 +11,7 @@ export default function Footer() {
               <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
                 <Code2 className="w-5 h-5 text-white" />
               </div>
-              <span className="text-lg font-bold text-white">X PPLG 2</span>
+              <span className="text-lg font-bold text-white">XI PPLG 2</span>
             </div>
             <p className="text-sm leading-relaxed max-w-xs">
               Kelas Pengembang Perangkat Lunak dan Game di SMK Negeri 1 Ciomas. Membangun generasi developer muda yang kreatif dan inovatif.
@@ -42,7 +42,7 @@ export default function Footer() {
               <li>SMK Negeri 1 Ciomas</li>
               <li>Jurusan PPLG</li>
               <li>Tahun Ajaran 2025/2026</li>
-              <li>Kelas X - Semester 2</li>
+              <li>Kelas XI - Semester 2</li>
             </ul>
           </div>
 
@@ -63,7 +63,7 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="mt-10 sm:mt-12 pt-6 sm:pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs sm:text-sm">
           <p>
-            &copy; {new Date().getFullYear()} X PPLG 2 — SMK Negeri 1 Ciomas
+            &copy; {new Date().getFullYear()} XI PPLG 2 — SMK Negeri 1 Ciomas
           </p>
           <p className="flex items-center gap-1.5">
             Dibuat oleh{' '}

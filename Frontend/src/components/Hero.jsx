@@ -48,7 +48,7 @@ export default function Hero() {
             transition={{ duration: 0.6, delay: 0.1 }}
             className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-white leading-[1.1] tracking-tight mb-4 sm:mb-6"
           >
-            X PPLG 2:{' '}
+            XI PPLG 2:{' '}
             <span className="text-transparent bg-clip-text bg-linear-to-r from-blue-300 via-cyan-300 to-teal-300">
               Coding the Future,
             </span>{' '}

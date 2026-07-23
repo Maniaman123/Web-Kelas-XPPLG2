@@ -28,7 +28,7 @@ export default function FeaturedProjectCard() {
     {
       icon: Users,
       title: 'Direktori Profil Lengkap',
-      desc: 'Eksplorasi bakat, bio kreatif, dan media sosial 46 siswa X PPLG 2.'
+      desc: 'Eksplorasi bakat, bio kreatif, dan media sosial 46 siswa XI PPLG 2.'
     },
     {
       icon: FolderGit2,
@@ -70,7 +70,7 @@ export default function FeaturedProjectCard() {
       {/* Main Pitch */}
       <div className="mb-6">
         <h3 className="text-xl sm:text-2xl font-extrabold text-primary leading-snug mb-3">
-          Portal Kolaboratif & Galeri Karya Kreatif X PPLG 2
+          Portal Kolaboratif & Galeri Karya Kreatif XI PPLG 2
         </h3>
         <p className="text-xs sm:text-sm text-primary/80 leading-relaxed font-normal">
           Platform digital interaktif premium yang menyatukan seluruh portofolio kolektif siswa, 

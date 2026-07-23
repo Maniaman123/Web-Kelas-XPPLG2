@@ -312,14 +312,14 @@ export default function Students() {
             style={{ background: 'rgba(220,238,250,0.15)', color: AZURE, border: `1px solid rgba(220,238,250,0.25)` }}
           >
             <Code2 className="w-3.5 h-3.5" />
-            SMK Negeri 1 Ciomas · X PPLG 2
+            SMK Negeri 1 Ciomas · XI PPLG 2
           </div>
 
           <h1
             className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight mb-3"
             style={{ color: AZURE }}
           >
-            The Students of X PPLG 2
+            The Students of XI PPLG 2
           </h1>
           <p className="text-sm sm:text-base mb-8" style={{ color: `${AZURE}99` }}>
             A collection of {students.length} passionate software and game developers.

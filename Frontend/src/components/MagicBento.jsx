@@ -11,7 +11,7 @@ const cardData = [
   {
     color: '#0d1117',
     title: 'Direktori Pelajar',
-    description: 'Kenali semua siswa-siswi kelas X PPLG 2 beserta profil lengkapnya.',
+    description: 'Kenali semua siswa-siswi kelas XI PPLG 2 beserta profil lengkapnya.',
     label: '👨‍💻 Siswa',
     href: '#siswa'
   },
@@ -39,7 +39,7 @@ const cardData = [
   {
     color: '#0d1117',
     title: 'Statistik Kelas',
-    description: 'Data statistik demografis dan pencapaian kelas X PPLG 2.',
+    description: 'Data statistik demografis dan pencapaian kelas XI PPLG 2.',
     label: '📊 Statistik',
     href: '#siswa'
   },

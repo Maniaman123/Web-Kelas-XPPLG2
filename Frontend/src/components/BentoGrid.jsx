@@ -46,7 +46,7 @@ export default function BentoGrid() {
         </h2>
         <p className="text-sm sm:text-base text-outlined max-w-2xl mx-auto">
           Temukan informasi lengkap tentang pelajar, proyek, jadwal, dan
-          kegiatan kelas X PPLG 2.
+          kegiatan kelas XI PPLG 2.
         </p>
       </div>
 

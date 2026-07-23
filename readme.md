@@ -1,6 +1,6 @@
-# 🚀 X PPLG 2 - The Digital Ecosystem
+# 🚀 XI PPLG 2 - The Digital Ecosystem
 
-Website resmi kelas **X PPLG 2 (Pengembangan Perangkat Lunak dan Gim)** dari **SMK Negeri 1 Ciomas**. Proyek ini dirancang sebagai hub digital yang menggabungkan portofolio siswa, manajemen informasi kelas, dan pameran proyek teknologi dalam satu ekosistem modern.
+Website resmi kelas **XI PPLG 2 (Pengembangan Perangkat Lunak dan Gim)** dari **SMK Negeri 1 Ciomas**. Proyek ini dirancang sebagai hub digital yang menggabungkan portofolio siswa, manajemen informasi kelas, dan pameran proyek teknologi dalam satu ekosistem modern.
 
 ## 🎨 Visi Desain
 Proyek ini mengusung gaya **Bento Grid (Modern SaaS Style)** yang memberikan tampilan rapi, kotak-kotak fungsional, dan sangat informatif. Dengan estetika premium yang berfokus pada tipografi dan kontras warna yang dewasa.
