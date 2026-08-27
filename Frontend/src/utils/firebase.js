@@ -29,6 +29,13 @@ import { getStorage }     from 'firebase/storage';
 // ── Firebase Project Config ─────────────────────────────────────────────────
 // Isi nilai-nilai ini di file .env di root folder Frontend/
 // Format: VITE_FIREBASE_XXXX=nilai_dari_firebase_console
+if (!import.meta.env.VITE_FIREBASE_API_KEY) {
+  console.error(
+    '[Firebase Error] VITE_FIREBASE_API_KEY tidak ditemukan!\n' +
+    'Pastikan file Frontend/.env telah terisi dengan benar dan server Vite telah di-restart.'
+  );
+}
+
 const firebaseConfig = {
   apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,

@@ -117,7 +117,7 @@ function DevCard({ student }) {
   const avatarClass = student.avatarColor || 'bg-teal-600';
 
   return (
-    <div className="p-4 flex flex-col h-full min-h-[200px]" style={{ color: TEAL }}>
+    <div className="p-4 flex flex-col h-full min-h-50" style={{ color: TEAL }}>
       {/* Absent number badge */}
       {student.absentNumber && (
         <div

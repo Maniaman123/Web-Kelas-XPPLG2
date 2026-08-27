@@ -10,7 +10,7 @@ export default function SkeletonCard({ variant = 'student' }) {
   if (variant === 'student') {
     return (
       <div 
-        className="p-4 flex flex-col h-full min-h-[200px] relative overflow-hidden rounded-2xl bg-secondary select-none"
+        className="p-4 flex flex-col h-full min-h-50 relative overflow-hidden rounded-2xl bg-secondary select-none"
         style={{ color: '#243B3C' }}
       >
         {/* Top Right Badge */}

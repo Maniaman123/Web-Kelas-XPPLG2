@@ -162,7 +162,7 @@ export default function ScheduleCard() {
       )}
 
       {/* Subject List */}
-      <div className="space-y-2 min-h-[120px]">
+      <div className="space-y-2 min-h-30">
         {loading ? (
           [...Array(4)].map((_, i) => <SkeletonRow key={i} />)
         ) : !dayData ? (

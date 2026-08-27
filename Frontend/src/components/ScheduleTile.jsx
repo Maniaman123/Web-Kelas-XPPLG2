@@ -182,7 +182,7 @@ export default function ScheduleTile() {
       )}
 
       {/* ── Subject & Event List ── */}
-      <div className="space-y-1.5 min-h-[160px]">
+      <div className="space-y-1.5 min-h-40">
         {loading ? (
           <ScheduleSkeleton />
         ) : !dayData ? (

@@ -742,7 +742,7 @@ export default function Cinematography() {
 
                       {/* Extra photo thumbnails strip (if multiple photos) */}
                       {isPhoto && item.photos && item.photos.length > 1 && (
-                        <div className="absolute bottom-3 right-3 z-10 flex gap-1 overflow-x-auto scrollbar-hide max-w-[120px]">
+                        <div className="absolute bottom-3 right-3 z-10 flex gap-1 overflow-x-auto scrollbar-hide max-w-30">
                           {item.photos.slice(1, 4).map((ph, idx) => (
                             <img
                               key={idx}
