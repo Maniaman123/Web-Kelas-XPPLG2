@@ -17,13 +17,13 @@ jobs:
         run: npm ci && npm run build
         working-directory: Frontend
         env:
-                VITE_FIREBASE_API_KEY=AIzaSyCWAAX4eOHtK-kfq5Adtrzm7l9uABbqH1k
-                VITE_FIREBASE_AUTH_DOMAIN=rsr-kelashan.firebaseapp.com
-                VITE_FIREBASE_PROJECT_ID=rsr-kelashan
-                VITE_FIREBASE_STORAGE_BUCKET=rsr-kelashan.firebasestorage.app
-                VITE_FIREBASE_MESSAGING_SENDER_ID=205051201067
-                VITE_FIREBASE_APP_ID=1:205051201067:web:49257dff5a593629390c6e
-                VITE_FIREBASE_MEASUREMENT_ID=G-KCGBZYXPG1
+          VITE_FIREBASE_API_KEY: AIzaSyCWAAX4eOHtK-kfq5Adtrzm7l9uABbqH1k
+          VITE_FIREBASE_AUTH_DOMAIN: rsr-kelashan.firebaseapp.com
+          VITE_FIREBASE_PROJECT_ID: rsr-kelashan
+          VITE_FIREBASE_STORAGE_BUCKET: rsr-kelashan.firebasestorage.app
+          VITE_FIREBASE_MESSAGING_SENDER_ID: "205051201067"
+          VITE_FIREBASE_APP_ID: "1:205051201067:web:49257dff5a593629390c6e"
+          VITE_FIREBASE_MEASUREMENT_ID: G-KCGBZYXPG1
 
 
       # 2. Beri tahu Firebase Action bahwa file firebase.json ada di dalam folder Frontend
